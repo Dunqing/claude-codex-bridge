@@ -1,6 +1,6 @@
 {
   "name": "claude-codex-bridge",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Bidirectional MCP server bridge between Claude Code and Codex CLI",
   "type": "module",
   "bin": {
