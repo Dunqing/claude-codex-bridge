@@ -17,7 +17,9 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "prepublishOnly": "pnpm build"
+    "prepublishOnly": "pnpm build",
+    "changeset": "changeset",
+    "release": "changeset publish"
   },
   "keywords": [
     "mcp",
