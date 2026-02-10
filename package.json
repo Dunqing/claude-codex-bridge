@@ -4,14 +4,14 @@
   "description": "Bidirectional MCP server bridge between Claude Code and Codex CLI",
   "type": "module",
   "bin": {
-    "claude-codex-bridge-codex": "./dist/codex-server.js",
-    "claude-codex-bridge-claude": "./dist/claude-server.js"
+    "claude-codex-bridge-codex": "./dist/codex-server.mjs",
+    "claude-codex-bridge-claude": "./dist/claude-server.mjs"
   },
   "files": [
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
+    "build": "tsdown",
     "dev:codex-server": "tsx src/codex-server.ts",
     "dev:claude-server": "tsx src/claude-server.ts",
     "test": "vitest run",
@@ -46,6 +46,7 @@
     "husky": "^9.1.7",
     "oxfmt": "^0.28.0",
     "oxlint": "^1.43.0",
+    "tsdown": "^0.20.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
