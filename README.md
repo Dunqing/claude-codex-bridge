@@ -134,8 +134,7 @@ pnpm install
 
 pnpm build         # Compile to dist/
 pnpm test          # Run tests
-pnpm typecheck     # Type check
-pnpm lint          # Lint
+pnpm lint          # Lint and type check
 
 # Dev mode (no build needed)
 pnpm dev:codex-server
