@@ -5,7 +5,8 @@ import { z } from "zod";
 import { execCommand } from "./lib/exec-runner.js";
 import { parseCodexOutput } from "./lib/codex-output-parser.js";
 import { buildExplainCodePrompt, buildPlanPerfPrompt } from "./lib/prompt-builder.js";
-import { logger } from "./lib/logger.js";
+import { createProgressReporter, logger, setMcpServer } from "./lib/logger.js";
+import type { ProgressReporter } from "./lib/logger.js";
 import { CODEX_MODELS } from "./lib/types.js";
 import type { CodexResult } from "./lib/types.js";
 
@@ -13,10 +14,46 @@ const server = new McpServer({
   name: "codex-bridge",
   version: "0.1.0",
 });
+setMcpServer(server);
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function reportCodexEvent(line: string, progress: ProgressReporter): void {
+  if (!line.trim()) return;
+  try {
+    const event = JSON.parse(line) as Record<string, unknown>;
+    const type = event["type"] as string | undefined;
+    if (!type) return;
+    const item = (event["item"] as Record<string, unknown>) ?? null;
+    const itemType = (item?.["type"] as string) ?? (event["itemType"] as string) ?? "";
+    if (!itemType) {
+      progress.report(type);
+      return;
+    }
+    // Extract a meaningful value based on the item type.
+    let detail = "";
+    if (itemType === "command_execution") {
+      detail = (item?.["command"] as string) ?? (event["command"] as string) ?? "";
+    } else if (itemType === "file_change") {
+      const kind = (item?.["kind"] as string) ?? (event["kind"] as string) ?? "";
+      const path = (item?.["path"] as string) ?? (event["path"] as string) ?? "";
+      detail = kind && path ? `${kind} ${path}` : path || kind;
+    } else if (itemType === "agent_message" || itemType === "message") {
+      const msg =
+        (item?.["text"] as string) ??
+        (event["text"] as string) ??
+        (item?.["content"] as string) ??
+        (event["content"] as string) ??
+        "";
+      detail = msg.length > 80 ? msg.slice(0, 80) + "..." : msg;
+    }
+    progress.report(detail ? `${itemType}: ${detail}` : itemType);
+  } catch {
+    // Not valid JSON — skip.
+  }
+}
 
 async function runCodex(
   prompt: string,
@@ -25,6 +62,7 @@ async function runCodex(
     model?: string;
     sandbox?: string;
     fullAuto?: boolean;
+    progress?: ProgressReporter;
   } = {},
 ): Promise<CodexResult> {
   const args = ["exec", "--json"];
@@ -33,17 +71,37 @@ async function runCodex(
   if (options.fullAuto) args.push("--full-auto");
   args.push(prompt);
 
+  options.progress?.report("Starting codex...");
+
+  // Buffer for partial JSONL lines split across stdout chunks.
+  let stdoutBuf = "";
+
   const result = await execCommand({
     command: "codex",
     args,
     cwd: options.workingDirectory,
     onStdout: (chunk) => {
-      logger.info(`[codex] ${chunk.toString().replace(/\n$/, "")}`);
+      const text = chunk.toString();
+
+      // Parse streaming JSONL events for inline progress.
+      if (options.progress) {
+        stdoutBuf += text;
+        const lines = stdoutBuf.split(/\r?\n|\r/);
+        stdoutBuf = lines.pop()!;
+        for (const line of lines) {
+          reportCodexEvent(line, options.progress);
+        }
+      }
     },
     onStderr: (chunk) => {
       logger.warn(`[codex:stderr] ${chunk.toString().replace(/\n$/, "")}`);
     },
   });
+
+  // Flush any remaining buffered JSONL fragment.
+  if (options.progress && stdoutBuf.trim()) {
+    reportCodexEvent(stdoutBuf, options.progress);
+  }
 
   if (result.timedOut) {
     return {
@@ -56,6 +114,7 @@ async function runCodex(
     };
   }
 
+  options.progress?.report("Parsing response...");
   const parsed = parseCodexOutput(result.stdout);
 
   // Check stderr for API key issues
@@ -136,8 +195,9 @@ server.registerTool(
         .describe("Sandbox level controlling what Codex can modify"),
     },
   },
-  async ({ prompt, workingDirectory, model, sandbox }) => {
-    const parsed = await runCodex(prompt, { workingDirectory, model, sandbox });
+  async ({ prompt, workingDirectory, model, sandbox }, extra) => {
+    const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
+    const parsed = await runCodex(prompt, { workingDirectory, model, sandbox, progress });
     return formatCodexResponse(parsed);
   },
 );
@@ -162,12 +222,13 @@ server.registerTool(
       workingDirectory: z.string().optional(),
     },
   },
-  async ({ target, focusAreas, context, workingDirectory }) => {
+  async ({ target, focusAreas, context, workingDirectory }, extra) => {
+    const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
     let prompt = `Review the following code changes. Provide specific, actionable feedback with line references.\n\nTarget: ${target}`;
     if (focusAreas) prompt += `\n\nFocus areas: ${focusAreas}`;
     if (context) prompt += `\n\nContext: ${context}`;
 
-    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only" });
+    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only", progress });
     return formatCodexResponse(parsed);
   },
 );
@@ -188,12 +249,13 @@ server.registerTool(
       workingDirectory: z.string().optional(),
     },
   },
-  async ({ plan, codebasePath, constraints, workingDirectory }) => {
+  async ({ plan, codebasePath, constraints, workingDirectory }, extra) => {
+    const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
     let prompt = `Critique this implementation plan. Identify gaps, risks, missing edge cases, and suggest improvements.\n\nPlan:\n${plan}`;
     if (codebasePath) prompt += `\n\nRelevant codebase: ${codebasePath}`;
     if (constraints) prompt += `\n\nConstraints: ${constraints}`;
 
-    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only" });
+    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only", progress });
     return formatCodexResponse(parsed);
   },
 );
@@ -217,9 +279,10 @@ server.registerTool(
       workingDirectory: z.string().optional(),
     },
   },
-  async ({ target, depth, context, workingDirectory }) => {
+  async ({ target, depth, context, workingDirectory }, extra) => {
+    const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
     const prompt = buildExplainCodePrompt({ target, depth, context });
-    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only" });
+    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only", progress });
     return formatCodexResponse(parsed);
   },
 );
@@ -244,9 +307,10 @@ server.registerTool(
       workingDirectory: z.string().optional(),
     },
   },
-  async ({ target, metrics, constraints, context, workingDirectory }) => {
+  async ({ target, metrics, constraints, context, workingDirectory }, extra) => {
+    const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
     const prompt = buildPlanPerfPrompt({ target, metrics, constraints, context });
-    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only" });
+    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only", progress });
     return formatCodexResponse(parsed);
   },
 );
@@ -268,12 +332,14 @@ server.registerTool(
         .describe("Sandbox level (must allow writes)"),
     },
   },
-  async ({ task, workingDirectory, model, sandbox }) => {
+  async ({ task, workingDirectory, model, sandbox }, extra) => {
+    const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
     const parsed = await runCodex(task, {
       workingDirectory,
       model,
       sandbox,
       fullAuto: true,
+      progress,
     });
     return formatCodexResponse(parsed);
   },

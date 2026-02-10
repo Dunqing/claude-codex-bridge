@@ -5,7 +5,8 @@ import { z } from "zod";
 import { execCommand } from "./lib/exec-runner.js";
 import { parseClaudeOutput } from "./lib/claude-output-parser.js";
 import { buildExplainCodePrompt, buildPlanPerfPrompt } from "./lib/prompt-builder.js";
-import { logger } from "./lib/logger.js";
+import { createProgressReporter, logger, setMcpServer } from "./lib/logger.js";
+import type { ProgressReporter } from "./lib/logger.js";
 import { CLAUDE_MODELS } from "./lib/types.js";
 import type { ClaudeResult } from "./lib/types.js";
 
@@ -13,6 +14,7 @@ const server = new McpServer({
   name: "claude-bridge",
   version: "0.1.0",
 });
+setMcpServer(server);
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -25,6 +27,7 @@ async function runClaude(
     model?: string;
     maxTurns?: number;
     allowedTools?: string[];
+    progress?: ProgressReporter;
   } = {},
 ): Promise<ClaudeResult> {
   const args = ["-p", "--output-format", "json"];
@@ -37,6 +40,11 @@ async function runClaude(
   }
   args.push(prompt);
 
+  options.progress?.report("Starting claude...");
+
+  // Buffer for partial stderr lines split across chunks.
+  let stderrBuf = "";
+
   const result = await execCommand({
     command: "claude",
     args,
@@ -45,9 +53,28 @@ async function runClaude(
       logger.info(`[claude] ${chunk.toString().replace(/\n$/, "")}`);
     },
     onStderr: (chunk) => {
-      logger.warn(`[claude:stderr] ${chunk.toString().replace(/\n$/, "")}`);
+      const text = chunk.toString();
+      logger.warn(`[claude:stderr] ${text.replace(/\n$/, "")}`);
+
+      // Forward complete stderr lines as inline progress.
+      if (options.progress) {
+        stderrBuf += text;
+        const lines = stderrBuf.split(/\r?\n|\r/);
+        stderrBuf = lines.pop()!;
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed) {
+            options.progress.report(trimmed);
+          }
+        }
+      }
     },
   });
+
+  // Flush any remaining buffered stderr fragment.
+  if (options.progress && stderrBuf.trim()) {
+    options.progress.report(stderrBuf.trim());
+  }
 
   if (result.timedOut) {
     return {
@@ -58,6 +85,7 @@ async function runClaude(
     };
   }
 
+  options.progress?.report("Parsing response...");
   const parsed = parseClaudeOutput(result.stdout);
 
   // Check stderr for API key issues
@@ -137,8 +165,15 @@ server.registerTool(
         .describe('Restrict tools (e.g., ["Read", "Grep", "Glob"])'),
     },
   },
-  async ({ prompt, workingDirectory, model, maxTurns, allowedTools }) => {
-    const parsed = await runClaude(prompt, { workingDirectory, model, maxTurns, allowedTools });
+  async ({ prompt, workingDirectory, model, maxTurns, allowedTools }, extra) => {
+    const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
+    const parsed = await runClaude(prompt, {
+      workingDirectory,
+      model,
+      maxTurns,
+      allowedTools,
+      progress,
+    });
     return formatClaudeResponse(parsed);
   },
 );
@@ -160,7 +195,8 @@ server.registerTool(
       maxTurns: z.number().optional().default(5),
     },
   },
-  async ({ target, focusAreas, context, workingDirectory, maxTurns }) => {
+  async ({ target, focusAreas, context, workingDirectory, maxTurns }, extra) => {
+    const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
     let prompt = `Review the following code changes. Provide specific, actionable feedback with line references.\n\nTarget: ${target}`;
     if (focusAreas) prompt += `\n\nFocus areas: ${focusAreas}`;
     if (context) prompt += `\n\nContext: ${context}`;
@@ -169,6 +205,7 @@ server.registerTool(
       workingDirectory,
       maxTurns,
       allowedTools: READ_ONLY_TOOLS,
+      progress,
     });
     return formatClaudeResponse(parsed);
   },
@@ -188,7 +225,8 @@ server.registerTool(
       maxTurns: z.number().optional().default(8),
     },
   },
-  async ({ plan, codebasePath, constraints, workingDirectory, maxTurns }) => {
+  async ({ plan, codebasePath, constraints, workingDirectory, maxTurns }, extra) => {
+    const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
     let prompt = `Critique this implementation plan. Evaluate feasibility against the actual codebase, check consistency with existing patterns, identify gaps and risks.\n\nPlan:\n${plan}`;
     if (codebasePath) prompt += `\n\nRelevant codebase: ${codebasePath}`;
     if (constraints) prompt += `\n\nConstraints: ${constraints}`;
@@ -197,6 +235,7 @@ server.registerTool(
       workingDirectory,
       maxTurns,
       allowedTools: READ_ONLY_TOOLS,
+      progress,
     });
     return formatClaudeResponse(parsed);
   },
@@ -222,12 +261,14 @@ server.registerTool(
       maxTurns: z.number().optional().default(8),
     },
   },
-  async ({ target, depth, context, workingDirectory, maxTurns }) => {
+  async ({ target, depth, context, workingDirectory, maxTurns }, extra) => {
+    const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
     const prompt = buildExplainCodePrompt({ target, depth, context });
     const parsed = await runClaude(prompt, {
       workingDirectory,
       maxTurns,
       allowedTools: READ_ONLY_TOOLS,
+      progress,
     });
     return formatClaudeResponse(parsed);
   },
@@ -251,12 +292,14 @@ server.registerTool(
       maxTurns: z.number().optional().default(10),
     },
   },
-  async ({ target, metrics, constraints, context, workingDirectory, maxTurns }) => {
+  async ({ target, metrics, constraints, context, workingDirectory, maxTurns }, extra) => {
+    const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
     const prompt = buildPlanPerfPrompt({ target, metrics, constraints, context });
     const parsed = await runClaude(prompt, {
       workingDirectory,
       maxTurns,
       allowedTools: READ_ONLY_TOOLS,
+      progress,
     });
     return formatClaudeResponse(parsed);
   },
@@ -275,8 +318,9 @@ server.registerTool(
       maxTurns: z.number().optional().default(15),
     },
   },
-  async ({ task, workingDirectory, model, maxTurns }) => {
-    const parsed = await runClaude(task, { workingDirectory, model, maxTurns });
+  async ({ task, workingDirectory, model, maxTurns }, extra) => {
+    const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
+    const parsed = await runClaude(task, { workingDirectory, model, maxTurns, progress });
     return formatClaudeResponse(parsed);
   },
 );
