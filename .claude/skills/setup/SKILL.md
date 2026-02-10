@@ -44,21 +44,29 @@ Be careful not to duplicate the section if it already exists. If it exists, ask 
 
 The codex-teammate agent lets you spawn Codex as a Claude Code subagent/teammate. It knows how to use all 6 codex bridge tools automatically.
 
-1. Find the agent template. Check if the npm package includes it:
+1. Locate the agent template. Try these sources in order:
 
 ```bash
-# From the package directory (or use npx to locate it)
+# If installed locally (node_modules exists)
 ls node_modules/claude-codex-bridge/agents/codex-teammate.md 2>/dev/null
+
+# If installed globally
+ls "$(npm prefix -g)/lib/node_modules/claude-codex-bridge/agents/codex-teammate.md" 2>/dev/null
 ```
 
 2. Copy it to the user's global agents directory:
 
 ```bash
 mkdir -p ~/.claude/agents
+
+# From local node_modules
 cp node_modules/claude-codex-bridge/agents/codex-teammate.md ~/.claude/agents/codex-teammate.md
+
+# Or from global install
+cp "$(npm prefix -g)/lib/node_modules/claude-codex-bridge/agents/codex-teammate.md" ~/.claude/agents/codex-teammate.md
 ```
 
-Or, if the user prefers a project-local agent, copy to the project's `.claude/agents/` instead:
+Or, if the user prefers a project-local agent, copy to the project's `.claude/agents/` instead (requires local install: `npm i -D claude-codex-bridge`):
 
 ```bash
 mkdir -p .claude/agents
