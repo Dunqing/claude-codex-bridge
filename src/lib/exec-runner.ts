@@ -64,8 +64,18 @@ export function execCommand(options: ExecOptions): Promise<ExecResult> {
     let timedOut = false;
     let settled = false;
 
-    child.stdout.on("data", (chunk: Buffer) => stdoutChunks.push(chunk));
-    child.stderr.on("data", (chunk: Buffer) => stderrChunks.push(chunk));
+    child.stdout.on("data", (chunk: Buffer) => {
+      stdoutChunks.push(chunk);
+      if (typeof options.onStdout === "function") {
+        options.onStdout(chunk);
+      }
+    });
+    child.stderr.on("data", (chunk: Buffer) => {
+      stderrChunks.push(chunk);
+      if (typeof options.onStderr === "function") {
+        options.onStderr(chunk);
+      }
+    });
 
     const timer = setTimeout(() => {
       timedOut = true;

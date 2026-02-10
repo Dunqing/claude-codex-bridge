@@ -37,6 +37,12 @@ async function runCodex(
     command: "codex",
     args,
     cwd: options.workingDirectory,
+    onStdout: (chunk) => {
+      logger.info(`[codex] ${chunk.toString().replace(/\n$/, "")}`);
+    },
+    onStderr: (chunk) => {
+      logger.warn(`[codex:stderr] ${chunk.toString().replace(/\n$/, "")}`);
+    },
   });
 
   if (result.timedOut) {

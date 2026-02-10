@@ -41,6 +41,12 @@ async function runClaude(
     command: "claude",
     args,
     cwd: options.workingDirectory,
+    onStdout: (chunk) => {
+      logger.info(`[claude] ${chunk.toString().replace(/\n$/, "")}`);
+    },
+    onStderr: (chunk) => {
+      logger.warn(`[claude:stderr] ${chunk.toString().replace(/\n$/, "")}`);
+    },
   });
 
   if (result.timedOut) {

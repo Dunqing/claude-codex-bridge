@@ -12,6 +12,8 @@ export interface ExecOptions {
   cwd?: string;
   env?: Record<string, string>;
   timeoutMs?: number;
+  onStdout?: (chunk: Buffer | string) => void;
+  onStderr?: (chunk: Buffer | string) => void;
 }
 
 export interface ExecResult {
