@@ -29,7 +29,8 @@
     "claude-codex-bridge": "./dist/cli.mjs"
   },
   "files": [
-    "dist"
+    "dist",
+    "agents"
   ],
   "type": "module",
   "scripts": {

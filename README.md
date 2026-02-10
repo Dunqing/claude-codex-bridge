@@ -113,6 +113,45 @@ tool_timeout_sec = 600
 | `claude_plan_perf`    | Ask Claude to plan performance improvements       |
 | `claude_implement`    | Ask Claude to write or modify code                |
 
+## Codex Teammate Agent
+
+You can spawn Codex as a **Claude Code teammate** — a subagent that automatically uses the bridge tools to give you a second opinion, review code, or work on tasks in parallel.
+
+### Install the Agent
+
+```bash
+# Global (available in all projects)
+mkdir -p ~/.claude/agents
+cp node_modules/claude-codex-bridge/agents/codex-teammate.md ~/.claude/agents/
+
+# Or project-local
+mkdir -p .claude/agents
+cp node_modules/claude-codex-bridge/agents/codex-teammate.md .claude/agents/
+```
+
+### Usage
+
+Once installed, spawn the teammate from Claude Code using the Task tool:
+
+```
+# Code review
+Task(subagent_type: "codex-teammate", prompt: "Review src/lib/exec-runner.ts for bugs and performance issues")
+
+# Explain unfamiliar code
+Task(subagent_type: "codex-teammate", prompt: "Explain the architecture of the MCP server in codex-server.ts")
+
+# Critique a plan
+Task(subagent_type: "codex-teammate", prompt: "Critique this plan: [your plan here]")
+
+# Performance analysis
+Task(subagent_type: "codex-teammate", prompt: "Analyze performance bottlenecks in the output parser")
+
+# General question
+Task(subagent_type: "codex-teammate", prompt: "What's the best approach for adding retry logic to the bridge?")
+```
+
+The agent automatically picks the right Codex tool (`codex_review_code`, `codex_explain_code`, `codex_plan_perf`, etc.) based on your request.
+
 ## Configuration
 
 | Variable            | Description                                 | Default           |
