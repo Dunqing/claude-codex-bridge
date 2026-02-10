@@ -2,40 +2,36 @@
   "name": "claude-codex-bridge",
   "version": "0.2.1",
   "description": "Bidirectional MCP server bridge between Claude Code and Codex CLI",
-  "type": "module",
+  "keywords": [
+    "ai",
+    "bridge",
+    "claude",
+    "codex",
+    "mcp"
+  ],
+  "license": "MIT",
   "bin": {
-    "claude-codex-bridge": "./dist/cli.mjs",
+    "ccb-claude": "./dist/claude-server.mjs",
     "ccb-codex": "./dist/codex-server.mjs",
-    "ccb-claude": "./dist/claude-server.mjs"
+    "claude-codex-bridge": "./dist/cli.mjs"
   },
   "files": [
     "dist"
   ],
+  "type": "module",
   "scripts": {
     "build": "tsdown",
     "dev:codex-server": "tsx src/codex-server.ts",
     "dev:claude-server": "tsx src/claude-server.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "oxlint src/ test/ --type-check",
-    "fmt": "oxfmt --write src/ test/",
+    "lint": "oxlint --type-check",
+    "fmt": "oxfmt .",
     "fmt:check": "oxfmt --check src/ test/",
     "publint": "publint",
     "prepublishOnly": "pnpm build",
     "release": "bumpp",
     "prepare": "husky"
-  },
-  "keywords": [
-    "mcp",
-    "claude",
-    "codex",
-    "bridge",
-    "ai"
-  ],
-  "license": "MIT",
-  "packageManager": "pnpm@10.29.2",
-  "engines": {
-    "node": ">=18"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.26.0",
@@ -52,5 +48,9 @@
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
-  }
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "packageManager": "pnpm@10.29.2"
 }

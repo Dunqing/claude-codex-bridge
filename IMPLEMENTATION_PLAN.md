@@ -40,25 +40,25 @@ test/
 
 ### codex-server (Claude calls Codex)
 
-| Tool | Purpose | Sandbox |
-|------|---------|---------|
-| `codex_query` | General question to Codex | read-only |
-| `codex_review_code` | Review git diff/files | read-only |
-| `codex_review_plan` | Critique an implementation plan | read-only |
-| `codex_explain_code` | Deep explanation of code/logic/architecture | read-only |
-| `codex_plan_perf` | Plan performance improvements for a target | read-only |
-| `codex_implement` | Write/modify code | workspace-write |
+| Tool                 | Purpose                                     | Sandbox         |
+| -------------------- | ------------------------------------------- | --------------- |
+| `codex_query`        | General question to Codex                   | read-only       |
+| `codex_review_code`  | Review git diff/files                       | read-only       |
+| `codex_review_plan`  | Critique an implementation plan             | read-only       |
+| `codex_explain_code` | Deep explanation of code/logic/architecture | read-only       |
+| `codex_plan_perf`    | Plan performance improvements for a target  | read-only       |
+| `codex_implement`    | Write/modify code                           | workspace-write |
 
 ### claude-server (Codex calls Claude)
 
-| Tool | Purpose | Max Turns |
-|------|---------|-----------|
-| `claude_query` | General question to Claude | 10 |
-| `claude_review_code` | Review git diff/files | 5 |
-| `claude_review_plan` | Critique an implementation plan | 8 |
-| `claude_explain_code` | Deep explanation of code/logic/architecture | 8 |
-| `claude_plan_perf` | Plan performance improvements for a target | 10 |
-| `claude_implement` | Write/modify code | 15 |
+| Tool                  | Purpose                                     | Max Turns |
+| --------------------- | ------------------------------------------- | --------- |
+| `claude_query`        | General question to Claude                  | 10        |
+| `claude_review_code`  | Review git diff/files                       | 5         |
+| `claude_review_plan`  | Critique an implementation plan             | 8         |
+| `claude_explain_code` | Deep explanation of code/logic/architecture | 8         |
+| `claude_plan_perf`    | Plan performance improvements for a target  | 10        |
+| `claude_implement`    | Write/modify code                           | 15        |
 
 ## Key Design Decisions
 
