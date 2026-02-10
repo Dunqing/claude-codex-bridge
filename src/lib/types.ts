@@ -1,3 +1,11 @@
+export const CODEX_MODELS = ["gpt-5.3-codex", "gpt-5.2-codex", "gpt-5.1-codex-max"] as const;
+
+export type CodexModel = (typeof CODEX_MODELS)[number];
+
+export const CLAUDE_MODELS = ["sonnet", "opus", "haiku"] as const;
+
+export type ClaudeModel = (typeof CLAUDE_MODELS)[number];
+
 export interface ExecOptions {
   command: string;
   args: string[];

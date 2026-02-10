@@ -6,6 +6,7 @@ import { execCommand } from "./lib/exec-runner.js";
 import { parseCodexOutput } from "./lib/codex-output-parser.js";
 import { buildExplainCodePrompt, buildPlanPerfPrompt } from "./lib/prompt-builder.js";
 import { logger } from "./lib/logger.js";
+import { CODEX_MODELS } from "./lib/types.js";
 import type { CodexResult } from "./lib/types.js";
 
 const server = new McpServer({
@@ -114,7 +115,7 @@ server.registerTool(
         .string()
         .optional()
         .describe("Working directory (defaults to server cwd)"),
-      model: z.string().optional().describe("Override the Codex model (e.g., o4-mini, o3)"),
+      model: z.enum(CODEX_MODELS).optional().describe("Override the Codex model"),
       sandbox: z
         .enum(["read-only", "workspace-write", "danger-full-access"])
         .optional()
@@ -246,7 +247,7 @@ server.registerTool(
     inputSchema: {
       task: z.string().describe("What to implement or fix"),
       workingDirectory: z.string().optional(),
-      model: z.string().optional(),
+      model: z.enum(CODEX_MODELS).optional().describe("Override the Codex model"),
       sandbox: z
         .enum(["workspace-write", "danger-full-access"])
         .optional()

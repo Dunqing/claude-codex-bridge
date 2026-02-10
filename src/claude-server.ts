@@ -6,6 +6,7 @@ import { execCommand } from "./lib/exec-runner.js";
 import { parseClaudeOutput } from "./lib/claude-output-parser.js";
 import { buildExplainCodePrompt, buildPlanPerfPrompt } from "./lib/prompt-builder.js";
 import { logger } from "./lib/logger.js";
+import { CLAUDE_MODELS } from "./lib/types.js";
 import type { ClaudeResult } from "./lib/types.js";
 
 const server = new McpServer({
@@ -110,7 +111,7 @@ server.registerTool(
         .string()
         .optional()
         .describe("Working directory (defaults to server cwd)"),
-      model: z.string().optional().describe("Model alias: sonnet, opus, or haiku"),
+      model: z.enum(CLAUDE_MODELS).optional().describe("Claude model alias"),
       maxTurns: z
         .number()
         .optional()
@@ -256,7 +257,7 @@ server.registerTool(
     inputSchema: {
       task: z.string().describe("What to implement or fix"),
       workingDirectory: z.string().optional(),
-      model: z.string().optional(),
+      model: z.enum(CLAUDE_MODELS).optional().describe("Claude model alias"),
       maxTurns: z.number().optional().default(15),
     },
   },
