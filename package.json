@@ -20,6 +20,7 @@
     "lint": "oxlint src/ test/",
     "fmt": "oxfmt --write src/ test/",
     "fmt:check": "oxfmt --check src/ test/",
+    "publint": "publint",
     "prepublishOnly": "pnpm build",
     "release": "bumpp",
     "prepare": "husky"
@@ -46,6 +47,7 @@
     "husky": "^9.1.7",
     "oxfmt": "^0.28.0",
     "oxlint": "^1.43.0",
+    "publint": "^0.3.17",
     "tsdown": "^0.20.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
