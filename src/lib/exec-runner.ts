@@ -3,7 +3,7 @@ import { BridgeError } from "./errors.js";
 import { logger } from "./logger.js";
 import type { ExecOptions, ExecResult } from "./types.js";
 
-const DEFAULT_TIMEOUT_MS = 300_000; // 5 minutes
+const DEFAULT_TIMEOUT_MS = 600_000; // 10 minutes
 const MAX_BRIDGE_DEPTH = 2;
 
 function getTimeoutMs(): number {

@@ -84,7 +84,7 @@ Add to `~/.codex/config.toml`:
 [mcp_servers.claude]
 command = "npx"
 args = ["claude-codex-bridge", "claude"]
-tool_timeout_sec = 300
+tool_timeout_sec = 600
 ```
 
 </details>
@@ -115,11 +115,11 @@ tool_timeout_sec = 300
 
 ## Configuration
 
-| Variable            | Description                                 | Default          |
-| ------------------- | ------------------------------------------- | ---------------- |
-| `BRIDGE_TIMEOUT_MS` | Subprocess timeout in milliseconds          | `300000` (5 min) |
-| `BRIDGE_DEBUG`      | Enable debug logging to stderr              | —                |
-| `BRIDGE_DEPTH`      | Current recursion depth (set automatically) | `0`              |
+| Variable            | Description                                 | Default           |
+| ------------------- | ------------------------------------------- | ----------------- |
+| `BRIDGE_TIMEOUT_MS` | Subprocess timeout in milliseconds          | `600000` (10 min) |
+| `BRIDGE_DEBUG`      | Enable debug logging to stderr              | —                 |
+| `BRIDGE_DEPTH`      | Current recursion depth (set automatically) | `0`               |
 
 ### Anti-Recursion Guard
 
