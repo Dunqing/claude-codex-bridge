@@ -9,7 +9,20 @@
     "codex",
     "mcp"
   ],
+  "homepage": "https://github.com/Dunqing/claude-codex-bridge#readme",
+  "bugs": {
+    "url": "https://github.com/Dunqing/claude-codex-bridge/issues"
+  },
   "license": "MIT",
+  "author": "Dunqing <dengqing0821@gmail.com>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Dunqing/claude-codex-bridge.git"
+  },
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/Dunqing"
+  },
   "bin": {
     "ccb-claude": "./dist/claude-server.mjs",
     "ccb-codex": "./dist/codex-server.mjs",
