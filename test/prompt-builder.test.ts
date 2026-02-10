@@ -1,8 +1,5 @@
 import { describe, it, expect } from "vitest";
-import {
-  buildExplainCodePrompt,
-  buildPlanPerfPrompt,
-} from "../src/lib/prompt-builder.js";
+import { buildExplainCodePrompt, buildPlanPerfPrompt } from "../src/lib/prompt-builder.js";
 
 describe("buildExplainCodePrompt", () => {
   it("builds a prompt with default depth", () => {

@@ -69,9 +69,7 @@ export function execCommand(options: ExecOptions): Promise<ExecResult> {
 
     const timer = setTimeout(() => {
       timedOut = true;
-      logger.warn(
-        `Process timed out after ${timeoutMs}ms, sending SIGTERM`,
-      );
+      logger.warn(`Process timed out after ${timeoutMs}ms, sending SIGTERM`);
       child.kill("SIGTERM");
       // Force kill after 5 seconds if still alive
       setTimeout(() => {
@@ -93,13 +91,7 @@ export function execCommand(options: ExecOptions): Promise<ExecResult> {
           ),
         );
       } else {
-        reject(
-          new BridgeError(
-            `Process error: ${err.message}`,
-            "PROCESS_ERROR",
-            err.code,
-          ),
-        );
+        reject(new BridgeError(`Process error: ${err.message}`, "PROCESS_ERROR", err.code));
       }
     });
 

@@ -1,0 +1,4 @@
+pnpm lint
+pnpm fmt:check
+pnpm typecheck
+pnpm test

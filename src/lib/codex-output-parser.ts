@@ -39,10 +39,7 @@ export function parseCodexOutput(jsonlOutput: string): CodexResult {
       case "item.completed": {
         const itemType = event["itemType"] as string | undefined;
         if (itemType === "agent_message" || itemType === "message") {
-          const text =
-            (event["text"] as string) ??
-            (event["content"] as string) ??
-            "";
+          const text = (event["text"] as string) ?? (event["content"] as string) ?? "";
           if (text) result.agentMessage = text;
         } else if (itemType === "file_change") {
           const path = (event["path"] as string) ?? "";
@@ -59,14 +56,11 @@ export function parseCodexOutput(jsonlOutput: string): CodexResult {
       }
 
       case "turn.completed": {
-        const usage = event["usage"] as
-          | Record<string, number>
-          | undefined;
+        const usage = event["usage"] as Record<string, number> | undefined;
         if (usage) {
           result.usage = {
             inputTokens: usage["input_tokens"] ?? usage["inputTokens"] ?? 0,
-            outputTokens:
-              usage["output_tokens"] ?? usage["outputTokens"] ?? 0,
+            outputTokens: usage["output_tokens"] ?? usage["outputTokens"] ?? 0,
           };
         }
         break;
@@ -75,9 +69,7 @@ export function parseCodexOutput(jsonlOutput: string): CodexResult {
       case "turn.failed":
       case "error": {
         const msg =
-          (event["error"] as string) ??
-          (event["message"] as string) ??
-          JSON.stringify(event);
+          (event["error"] as string) ?? (event["message"] as string) ?? JSON.stringify(event);
         result.errors.push(msg);
         break;
       }

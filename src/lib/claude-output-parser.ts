@@ -36,9 +36,9 @@ export function parseClaudeOutput(jsonOutput: string): ClaudeResult {
   if (typeof resultField === "string") {
     result.resultText = resultField;
   } else if (resultField && typeof resultField === "object") {
-    const content = (resultField as Record<string, unknown>)[
-      "content"
-    ] as Array<Record<string, unknown>> | undefined;
+    const content = (resultField as Record<string, unknown>)["content"] as
+      | Array<Record<string, unknown>>
+      | undefined;
     if (Array.isArray(content)) {
       result.resultText = content
         .filter((c) => c["type"] === "text")
@@ -67,7 +67,8 @@ export function parseClaudeOutput(jsonOutput: string): ClaudeResult {
   // Check for errors
   const error = parsed["error"] as string | Record<string, unknown> | undefined;
   if (error) {
-    const msg = typeof error === "string" ? error : (error["message"] as string) ?? JSON.stringify(error);
+    const msg =
+      typeof error === "string" ? error : ((error["message"] as string) ?? JSON.stringify(error));
     result.errors.push(msg);
   }
 

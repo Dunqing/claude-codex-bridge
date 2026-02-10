@@ -5,7 +5,6 @@ import { z } from "zod";
 import { execCommand } from "./lib/exec-runner.js";
 import { parseCodexOutput } from "./lib/codex-output-parser.js";
 import { buildExplainCodePrompt, buildPlanPerfPrompt } from "./lib/prompt-builder.js";
-import { BridgeError } from "./lib/errors.js";
 import { logger } from "./lib/logger.js";
 import type { CodexResult } from "./lib/types.js";
 
@@ -55,7 +54,11 @@ async function runCodex(
   // Check stderr for API key issues
   if (result.exitCode !== 0 && !parsed.agentMessage) {
     const stderr = result.stderr.toLowerCase();
-    if (stderr.includes("api key") || stderr.includes("authentication") || stderr.includes("unauthorized")) {
+    if (
+      stderr.includes("api key") ||
+      stderr.includes("authentication") ||
+      stderr.includes("unauthorized")
+    ) {
       parsed.errors.push("Codex API key issue. Ensure OPENAI_API_KEY is set.");
     } else if (result.stderr.trim()) {
       parsed.errors.push(result.stderr.trim());
@@ -65,7 +68,10 @@ async function runCodex(
   return parsed;
 }
 
-function formatCodexResponse(parsed: CodexResult): { content: Array<{ type: "text"; text: string }>; isError?: boolean } {
+function formatCodexResponse(parsed: CodexResult): {
+  content: Array<{ type: "text"; text: string }>;
+  isError?: boolean;
+} {
   if (parsed.errors.length > 0 && !parsed.agentMessage) {
     return {
       content: [{ type: "text" as const, text: `Error: ${parsed.errors.join("; ")}` }],
@@ -96,126 +102,168 @@ function formatCodexResponse(parsed: CodexResult): { content: Array<{ type: "tex
 // Tools
 // ---------------------------------------------------------------------------
 
-server.registerTool("codex_query", {
-  title: "Ask Codex",
-  description:
-    "Ask OpenAI Codex a question or give it a task. Use for getting a second opinion, exploring unfamiliar code, or tasks that benefit from a different model's perspective.",
-  inputSchema: {
-    prompt: z.string().describe("The question or task for Codex"),
-    workingDirectory: z.string().optional().describe("Working directory (defaults to server cwd)"),
-    model: z.string().optional().describe("Override the Codex model (e.g., o4-mini, o3)"),
-    sandbox: z
-      .enum(["read-only", "workspace-write", "danger-full-access"])
-      .optional()
-      .default("read-only")
-      .describe("Sandbox level controlling what Codex can modify"),
+server.registerTool(
+  "codex_query",
+  {
+    title: "Ask Codex",
+    description:
+      "Ask OpenAI Codex a question or give it a task. Use for getting a second opinion, exploring unfamiliar code, or tasks that benefit from a different model's perspective.",
+    inputSchema: {
+      prompt: z.string().describe("The question or task for Codex"),
+      workingDirectory: z
+        .string()
+        .optional()
+        .describe("Working directory (defaults to server cwd)"),
+      model: z.string().optional().describe("Override the Codex model (e.g., o4-mini, o3)"),
+      sandbox: z
+        .enum(["read-only", "workspace-write", "danger-full-access"])
+        .optional()
+        .default("read-only")
+        .describe("Sandbox level controlling what Codex can modify"),
+    },
   },
-}, async ({ prompt, workingDirectory, model, sandbox }) => {
-  const parsed = await runCodex(prompt, { workingDirectory, model, sandbox });
-  return formatCodexResponse(parsed);
-});
-
-server.registerTool("codex_review_code", {
-  title: "Codex Code Review",
-  description:
-    "Ask Codex to review code. Provide a git diff range, file paths, or a code snippet. Returns specific, actionable feedback.",
-  inputSchema: {
-    target: z.string().describe('What to review: git diff range (e.g., "HEAD~3..HEAD"), file paths, or code snippet'),
-    focusAreas: z.string().optional().describe("Focus on: bugs, performance, style, security, etc."),
-    context: z.string().optional().describe("Additional context about the codebase or changes"),
-    workingDirectory: z.string().optional(),
+  async ({ prompt, workingDirectory, model, sandbox }) => {
+    const parsed = await runCodex(prompt, { workingDirectory, model, sandbox });
+    return formatCodexResponse(parsed);
   },
-}, async ({ target, focusAreas, context, workingDirectory }) => {
-  let prompt = `Review the following code changes. Provide specific, actionable feedback with line references.\n\nTarget: ${target}`;
-  if (focusAreas) prompt += `\n\nFocus areas: ${focusAreas}`;
-  if (context) prompt += `\n\nContext: ${context}`;
+);
 
-  const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only" });
-  return formatCodexResponse(parsed);
-});
-
-server.registerTool("codex_review_plan", {
-  title: "Codex Plan Review",
-  description:
-    "Ask Codex to critique an implementation plan. Identifies gaps, risks, missing edge cases, and suggests improvements.",
-  inputSchema: {
-    plan: z.string().describe("The implementation plan or design to review"),
-    codebasePath: z.string().optional().describe("Path to relevant codebase for context"),
-    constraints: z.string().optional().describe("Known constraints: timeline, tech stack, compatibility"),
-    workingDirectory: z.string().optional(),
+server.registerTool(
+  "codex_review_code",
+  {
+    title: "Codex Code Review",
+    description:
+      "Ask Codex to review code. Provide a git diff range, file paths, or a code snippet. Returns specific, actionable feedback.",
+    inputSchema: {
+      target: z
+        .string()
+        .describe(
+          'What to review: git diff range (e.g., "HEAD~3..HEAD"), file paths, or code snippet',
+        ),
+      focusAreas: z
+        .string()
+        .optional()
+        .describe("Focus on: bugs, performance, style, security, etc."),
+      context: z.string().optional().describe("Additional context about the codebase or changes"),
+      workingDirectory: z.string().optional(),
+    },
   },
-}, async ({ plan, codebasePath, constraints, workingDirectory }) => {
-  let prompt = `Critique this implementation plan. Identify gaps, risks, missing edge cases, and suggest improvements.\n\nPlan:\n${plan}`;
-  if (codebasePath) prompt += `\n\nRelevant codebase: ${codebasePath}`;
-  if (constraints) prompt += `\n\nConstraints: ${constraints}`;
+  async ({ target, focusAreas, context, workingDirectory }) => {
+    let prompt = `Review the following code changes. Provide specific, actionable feedback with line references.\n\nTarget: ${target}`;
+    if (focusAreas) prompt += `\n\nFocus areas: ${focusAreas}`;
+    if (context) prompt += `\n\nContext: ${context}`;
 
-  const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only" });
-  return formatCodexResponse(parsed);
-});
-
-server.registerTool("codex_explain_code", {
-  title: "Codex Explain Code",
-  description:
-    "Ask Codex to deeply explain code, logic, or architecture. Useful for understanding unfamiliar code, onboarding, or documenting complex systems.",
-  inputSchema: {
-    target: z.string().describe("What to explain: file path, function name, module, or code snippet"),
-    depth: z
-      .enum(["overview", "detailed", "trace"])
-      .optional()
-      .default("detailed")
-      .describe("Depth of explanation: overview, detailed, or full execution trace"),
-    context: z.string().optional().describe("Additional context about the codebase"),
-    workingDirectory: z.string().optional(),
+    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only" });
+    return formatCodexResponse(parsed);
   },
-}, async ({ target, depth, context, workingDirectory }) => {
-  const prompt = buildExplainCodePrompt({ target, depth, context });
-  const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only" });
-  return formatCodexResponse(parsed);
-});
+);
 
-server.registerTool("codex_plan_perf", {
-  title: "Codex Performance Plan",
-  description:
-    "Ask Codex to analyze performance and create an improvement plan. Identifies bottlenecks, proposes ranked optimizations with expected impact.",
-  inputSchema: {
-    target: z.string().describe("What to optimize: function, module, or pipeline path"),
-    metrics: z
-      .array(z.enum(["latency", "throughput", "memory", "binary-size"]))
-      .optional()
-      .describe("Performance metrics to focus on"),
-    constraints: z.string().optional().describe("Constraints: must not increase binary size, etc."),
-    context: z.string().optional().describe("Additional context about usage patterns"),
-    workingDirectory: z.string().optional(),
+server.registerTool(
+  "codex_review_plan",
+  {
+    title: "Codex Plan Review",
+    description:
+      "Ask Codex to critique an implementation plan. Identifies gaps, risks, missing edge cases, and suggests improvements.",
+    inputSchema: {
+      plan: z.string().describe("The implementation plan or design to review"),
+      codebasePath: z.string().optional().describe("Path to relevant codebase for context"),
+      constraints: z
+        .string()
+        .optional()
+        .describe("Known constraints: timeline, tech stack, compatibility"),
+      workingDirectory: z.string().optional(),
+    },
   },
-}, async ({ target, metrics, constraints, context, workingDirectory }) => {
-  const prompt = buildPlanPerfPrompt({ target, metrics, constraints, context });
-  const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only" });
-  return formatCodexResponse(parsed);
-});
+  async ({ plan, codebasePath, constraints, workingDirectory }) => {
+    let prompt = `Critique this implementation plan. Identify gaps, risks, missing edge cases, and suggest improvements.\n\nPlan:\n${plan}`;
+    if (codebasePath) prompt += `\n\nRelevant codebase: ${codebasePath}`;
+    if (constraints) prompt += `\n\nConstraints: ${constraints}`;
 
-server.registerTool("codex_implement", {
-  title: "Codex Implement",
-  description:
-    "Ask Codex to implement a feature, fix a bug, or make code changes. WARNING: This modifies your codebase. Returns a summary of what was changed.",
-  inputSchema: {
-    task: z.string().describe("What to implement or fix"),
-    workingDirectory: z.string().optional(),
-    model: z.string().optional(),
-    sandbox: z
-      .enum(["workspace-write", "danger-full-access"])
-      .optional()
-      .default("workspace-write")
-      .describe("Sandbox level (must allow writes)"),
+    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only" });
+    return formatCodexResponse(parsed);
   },
-}, async ({ task, workingDirectory, model, sandbox }) => {
-  const parsed = await runCodex(task, {
-    workingDirectory,
-    model,
-    sandbox,
-    fullAuto: true,
-  });
-  return formatCodexResponse(parsed);
-});
+);
+
+server.registerTool(
+  "codex_explain_code",
+  {
+    title: "Codex Explain Code",
+    description:
+      "Ask Codex to deeply explain code, logic, or architecture. Useful for understanding unfamiliar code, onboarding, or documenting complex systems.",
+    inputSchema: {
+      target: z
+        .string()
+        .describe("What to explain: file path, function name, module, or code snippet"),
+      depth: z
+        .enum(["overview", "detailed", "trace"])
+        .optional()
+        .default("detailed")
+        .describe("Depth of explanation: overview, detailed, or full execution trace"),
+      context: z.string().optional().describe("Additional context about the codebase"),
+      workingDirectory: z.string().optional(),
+    },
+  },
+  async ({ target, depth, context, workingDirectory }) => {
+    const prompt = buildExplainCodePrompt({ target, depth, context });
+    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only" });
+    return formatCodexResponse(parsed);
+  },
+);
+
+server.registerTool(
+  "codex_plan_perf",
+  {
+    title: "Codex Performance Plan",
+    description:
+      "Ask Codex to analyze performance and create an improvement plan. Identifies bottlenecks, proposes ranked optimizations with expected impact.",
+    inputSchema: {
+      target: z.string().describe("What to optimize: function, module, or pipeline path"),
+      metrics: z
+        .array(z.enum(["latency", "throughput", "memory", "binary-size"]))
+        .optional()
+        .describe("Performance metrics to focus on"),
+      constraints: z
+        .string()
+        .optional()
+        .describe("Constraints: must not increase binary size, etc."),
+      context: z.string().optional().describe("Additional context about usage patterns"),
+      workingDirectory: z.string().optional(),
+    },
+  },
+  async ({ target, metrics, constraints, context, workingDirectory }) => {
+    const prompt = buildPlanPerfPrompt({ target, metrics, constraints, context });
+    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only" });
+    return formatCodexResponse(parsed);
+  },
+);
+
+server.registerTool(
+  "codex_implement",
+  {
+    title: "Codex Implement",
+    description:
+      "Ask Codex to implement a feature, fix a bug, or make code changes. WARNING: This modifies your codebase. Returns a summary of what was changed.",
+    inputSchema: {
+      task: z.string().describe("What to implement or fix"),
+      workingDirectory: z.string().optional(),
+      model: z.string().optional(),
+      sandbox: z
+        .enum(["workspace-write", "danger-full-access"])
+        .optional()
+        .default("workspace-write")
+        .describe("Sandbox level (must allow writes)"),
+    },
+  },
+  async ({ task, workingDirectory, model, sandbox }) => {
+    const parsed = await runCodex(task, {
+      workingDirectory,
+      model,
+      sandbox,
+      fullAuto: true,
+    });
+    return formatCodexResponse(parsed);
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Start

@@ -56,7 +56,11 @@ async function runClaude(
   // Check stderr for API key issues
   if (result.exitCode !== 0 && !parsed.resultText) {
     const stderr = result.stderr.toLowerCase();
-    if (stderr.includes("api key") || stderr.includes("authentication") || stderr.includes("unauthorized")) {
+    if (
+      stderr.includes("api key") ||
+      stderr.includes("authentication") ||
+      stderr.includes("unauthorized")
+    ) {
       parsed.errors.push("Claude API key issue. Ensure ANTHROPIC_API_KEY is set.");
     } else if (result.stderr.trim()) {
       parsed.errors.push(result.stderr.trim());
@@ -66,7 +70,10 @@ async function runClaude(
   return parsed;
 }
 
-function formatClaudeResponse(parsed: ClaudeResult): { content: Array<{ type: "text"; text: string }>; isError?: boolean } {
+function formatClaudeResponse(parsed: ClaudeResult): {
+  content: Array<{ type: "text"; text: string }>;
+  isError?: boolean;
+} {
   if (parsed.errors.length > 0 && !parsed.resultText) {
     return {
       content: [{ type: "text" as const, text: `Error: ${parsed.errors.join("; ")}` }],
@@ -78,140 +85,186 @@ function formatClaudeResponse(parsed: ClaudeResult): { content: Array<{ type: "t
 }
 
 // Read-only tool set for review/analysis tasks
-const READ_ONLY_TOOLS = ["Read", "Grep", "Glob", "Bash(git diff *)", "Bash(git log *)", "Bash(git show *)"];
+const READ_ONLY_TOOLS = [
+  "Read",
+  "Grep",
+  "Glob",
+  "Bash(git diff *)",
+  "Bash(git log *)",
+  "Bash(git show *)",
+];
 
 // ---------------------------------------------------------------------------
 // Tools
 // ---------------------------------------------------------------------------
 
-server.registerTool("claude_query", {
-  title: "Ask Claude",
-  description:
-    "Ask Claude Code a question or give it a task. Claude will use its full toolset (file reading, code search, web search, etc.) to answer.",
-  inputSchema: {
-    prompt: z.string().describe("The question or task for Claude"),
-    workingDirectory: z.string().optional().describe("Working directory (defaults to server cwd)"),
-    model: z.string().optional().describe("Model alias: sonnet, opus, or haiku"),
-    maxTurns: z.number().optional().default(10).describe("Maximum agentic turns (limits runtime)"),
-    allowedTools: z.array(z.string()).optional().describe('Restrict tools (e.g., ["Read", "Grep", "Glob"])'),
+server.registerTool(
+  "claude_query",
+  {
+    title: "Ask Claude",
+    description:
+      "Ask Claude Code a question or give it a task. Claude will use its full toolset (file reading, code search, web search, etc.) to answer.",
+    inputSchema: {
+      prompt: z.string().describe("The question or task for Claude"),
+      workingDirectory: z
+        .string()
+        .optional()
+        .describe("Working directory (defaults to server cwd)"),
+      model: z.string().optional().describe("Model alias: sonnet, opus, or haiku"),
+      maxTurns: z
+        .number()
+        .optional()
+        .default(10)
+        .describe("Maximum agentic turns (limits runtime)"),
+      allowedTools: z
+        .array(z.string())
+        .optional()
+        .describe('Restrict tools (e.g., ["Read", "Grep", "Glob"])'),
+    },
   },
-}, async ({ prompt, workingDirectory, model, maxTurns, allowedTools }) => {
-  const parsed = await runClaude(prompt, { workingDirectory, model, maxTurns, allowedTools });
-  return formatClaudeResponse(parsed);
-});
-
-server.registerTool("claude_review_code", {
-  title: "Claude Code Review",
-  description:
-    "Ask Claude to review code for quality, bugs, security issues, and best practices. Provide a git diff range, file paths, or code snippet.",
-  inputSchema: {
-    target: z.string().describe('What to review: git diff range, file paths, or code snippet'),
-    focusAreas: z.string().optional().describe("Focus on: bugs, performance, style, security, etc."),
-    context: z.string().optional().describe("Additional context about the changes"),
-    workingDirectory: z.string().optional(),
-    maxTurns: z.number().optional().default(5),
+  async ({ prompt, workingDirectory, model, maxTurns, allowedTools }) => {
+    const parsed = await runClaude(prompt, { workingDirectory, model, maxTurns, allowedTools });
+    return formatClaudeResponse(parsed);
   },
-}, async ({ target, focusAreas, context, workingDirectory, maxTurns }) => {
-  let prompt = `Review the following code changes. Provide specific, actionable feedback with line references.\n\nTarget: ${target}`;
-  if (focusAreas) prompt += `\n\nFocus areas: ${focusAreas}`;
-  if (context) prompt += `\n\nContext: ${context}`;
+);
 
-  const parsed = await runClaude(prompt, {
-    workingDirectory,
-    maxTurns,
-    allowedTools: READ_ONLY_TOOLS,
-  });
-  return formatClaudeResponse(parsed);
-});
-
-server.registerTool("claude_review_plan", {
-  title: "Claude Plan Review",
-  description:
-    "Ask Claude to critique an implementation plan. Claude will examine the actual codebase to validate feasibility and consistency with existing patterns.",
-  inputSchema: {
-    plan: z.string().describe("The implementation plan to review"),
-    codebasePath: z.string().optional().describe("Path to relevant codebase for context"),
-    constraints: z.string().optional().describe("Known constraints"),
-    workingDirectory: z.string().optional(),
-    maxTurns: z.number().optional().default(8),
+server.registerTool(
+  "claude_review_code",
+  {
+    title: "Claude Code Review",
+    description:
+      "Ask Claude to review code for quality, bugs, security issues, and best practices. Provide a git diff range, file paths, or code snippet.",
+    inputSchema: {
+      target: z.string().describe("What to review: git diff range, file paths, or code snippet"),
+      focusAreas: z
+        .string()
+        .optional()
+        .describe("Focus on: bugs, performance, style, security, etc."),
+      context: z.string().optional().describe("Additional context about the changes"),
+      workingDirectory: z.string().optional(),
+      maxTurns: z.number().optional().default(5),
+    },
   },
-}, async ({ plan, codebasePath, constraints, workingDirectory, maxTurns }) => {
-  let prompt = `Critique this implementation plan. Evaluate feasibility against the actual codebase, check consistency with existing patterns, identify gaps and risks.\n\nPlan:\n${plan}`;
-  if (codebasePath) prompt += `\n\nRelevant codebase: ${codebasePath}`;
-  if (constraints) prompt += `\n\nConstraints: ${constraints}`;
+  async ({ target, focusAreas, context, workingDirectory, maxTurns }) => {
+    let prompt = `Review the following code changes. Provide specific, actionable feedback with line references.\n\nTarget: ${target}`;
+    if (focusAreas) prompt += `\n\nFocus areas: ${focusAreas}`;
+    if (context) prompt += `\n\nContext: ${context}`;
 
-  const parsed = await runClaude(prompt, {
-    workingDirectory,
-    maxTurns,
-    allowedTools: READ_ONLY_TOOLS,
-  });
-  return formatClaudeResponse(parsed);
-});
-
-server.registerTool("claude_explain_code", {
-  title: "Claude Explain Code",
-  description:
-    "Ask Claude to deeply explain code, logic, or architecture. Claude will read the actual source files to give grounded explanations.",
-  inputSchema: {
-    target: z.string().describe("What to explain: file path, function name, module, or code snippet"),
-    depth: z
-      .enum(["overview", "detailed", "trace"])
-      .optional()
-      .default("detailed")
-      .describe("Depth: overview, detailed, or full execution trace"),
-    context: z.string().optional().describe("Additional context about the codebase"),
-    workingDirectory: z.string().optional(),
-    maxTurns: z.number().optional().default(8),
+    const parsed = await runClaude(prompt, {
+      workingDirectory,
+      maxTurns,
+      allowedTools: READ_ONLY_TOOLS,
+    });
+    return formatClaudeResponse(parsed);
   },
-}, async ({ target, depth, context, workingDirectory, maxTurns }) => {
-  const prompt = buildExplainCodePrompt({ target, depth, context });
-  const parsed = await runClaude(prompt, {
-    workingDirectory,
-    maxTurns,
-    allowedTools: READ_ONLY_TOOLS,
-  });
-  return formatClaudeResponse(parsed);
-});
+);
 
-server.registerTool("claude_plan_perf", {
-  title: "Claude Performance Plan",
-  description:
-    "Ask Claude to analyze performance and create an improvement plan. Claude reads the actual code to identify bottlenecks and propose optimizations.",
-  inputSchema: {
-    target: z.string().describe("What to optimize: function, module, or pipeline path"),
-    metrics: z
-      .array(z.enum(["latency", "throughput", "memory", "binary-size"]))
-      .optional()
-      .describe("Performance metrics to focus on"),
-    constraints: z.string().optional().describe("Constraints"),
-    context: z.string().optional().describe("Additional context about usage patterns"),
-    workingDirectory: z.string().optional(),
-    maxTurns: z.number().optional().default(10),
+server.registerTool(
+  "claude_review_plan",
+  {
+    title: "Claude Plan Review",
+    description:
+      "Ask Claude to critique an implementation plan. Claude will examine the actual codebase to validate feasibility and consistency with existing patterns.",
+    inputSchema: {
+      plan: z.string().describe("The implementation plan to review"),
+      codebasePath: z.string().optional().describe("Path to relevant codebase for context"),
+      constraints: z.string().optional().describe("Known constraints"),
+      workingDirectory: z.string().optional(),
+      maxTurns: z.number().optional().default(8),
+    },
   },
-}, async ({ target, metrics, constraints, context, workingDirectory, maxTurns }) => {
-  const prompt = buildPlanPerfPrompt({ target, metrics, constraints, context });
-  const parsed = await runClaude(prompt, {
-    workingDirectory,
-    maxTurns,
-    allowedTools: READ_ONLY_TOOLS,
-  });
-  return formatClaudeResponse(parsed);
-});
+  async ({ plan, codebasePath, constraints, workingDirectory, maxTurns }) => {
+    let prompt = `Critique this implementation plan. Evaluate feasibility against the actual codebase, check consistency with existing patterns, identify gaps and risks.\n\nPlan:\n${plan}`;
+    if (codebasePath) prompt += `\n\nRelevant codebase: ${codebasePath}`;
+    if (constraints) prompt += `\n\nConstraints: ${constraints}`;
 
-server.registerTool("claude_implement", {
-  title: "Claude Implement",
-  description:
-    "Ask Claude to implement a feature, fix a bug, or make code changes. WARNING: This modifies your codebase.",
-  inputSchema: {
-    task: z.string().describe("What to implement or fix"),
-    workingDirectory: z.string().optional(),
-    model: z.string().optional(),
-    maxTurns: z.number().optional().default(15),
+    const parsed = await runClaude(prompt, {
+      workingDirectory,
+      maxTurns,
+      allowedTools: READ_ONLY_TOOLS,
+    });
+    return formatClaudeResponse(parsed);
   },
-}, async ({ task, workingDirectory, model, maxTurns }) => {
-  const parsed = await runClaude(task, { workingDirectory, model, maxTurns });
-  return formatClaudeResponse(parsed);
-});
+);
+
+server.registerTool(
+  "claude_explain_code",
+  {
+    title: "Claude Explain Code",
+    description:
+      "Ask Claude to deeply explain code, logic, or architecture. Claude will read the actual source files to give grounded explanations.",
+    inputSchema: {
+      target: z
+        .string()
+        .describe("What to explain: file path, function name, module, or code snippet"),
+      depth: z
+        .enum(["overview", "detailed", "trace"])
+        .optional()
+        .default("detailed")
+        .describe("Depth: overview, detailed, or full execution trace"),
+      context: z.string().optional().describe("Additional context about the codebase"),
+      workingDirectory: z.string().optional(),
+      maxTurns: z.number().optional().default(8),
+    },
+  },
+  async ({ target, depth, context, workingDirectory, maxTurns }) => {
+    const prompt = buildExplainCodePrompt({ target, depth, context });
+    const parsed = await runClaude(prompt, {
+      workingDirectory,
+      maxTurns,
+      allowedTools: READ_ONLY_TOOLS,
+    });
+    return formatClaudeResponse(parsed);
+  },
+);
+
+server.registerTool(
+  "claude_plan_perf",
+  {
+    title: "Claude Performance Plan",
+    description:
+      "Ask Claude to analyze performance and create an improvement plan. Claude reads the actual code to identify bottlenecks and propose optimizations.",
+    inputSchema: {
+      target: z.string().describe("What to optimize: function, module, or pipeline path"),
+      metrics: z
+        .array(z.enum(["latency", "throughput", "memory", "binary-size"]))
+        .optional()
+        .describe("Performance metrics to focus on"),
+      constraints: z.string().optional().describe("Constraints"),
+      context: z.string().optional().describe("Additional context about usage patterns"),
+      workingDirectory: z.string().optional(),
+      maxTurns: z.number().optional().default(10),
+    },
+  },
+  async ({ target, metrics, constraints, context, workingDirectory, maxTurns }) => {
+    const prompt = buildPlanPerfPrompt({ target, metrics, constraints, context });
+    const parsed = await runClaude(prompt, {
+      workingDirectory,
+      maxTurns,
+      allowedTools: READ_ONLY_TOOLS,
+    });
+    return formatClaudeResponse(parsed);
+  },
+);
+
+server.registerTool(
+  "claude_implement",
+  {
+    title: "Claude Implement",
+    description:
+      "Ask Claude to implement a feature, fix a bug, or make code changes. WARNING: This modifies your codebase.",
+    inputSchema: {
+      task: z.string().describe("What to implement or fix"),
+      workingDirectory: z.string().optional(),
+      model: z.string().optional(),
+      maxTurns: z.number().optional().default(15),
+    },
+  },
+  async ({ task, workingDirectory, model, maxTurns }) => {
+    const parsed = await runClaude(task, { workingDirectory, model, maxTurns });
+    return formatClaudeResponse(parsed);
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Start
