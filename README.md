@@ -28,8 +28,8 @@ Let Claude and Codex work as partners — each can ask the other for help, revie
 No install needed — use directly via `npx`:
 
 ```bash
-npx -p claude-codex-bridge ccb-codex   # Start the Codex server
-npx -p claude-codex-bridge ccb-claude  # Start the Claude server
+npx claude-codex-bridge codex    # Start the Codex server
+npx claude-codex-bridge claude   # Start the Claude server
 ```
 
 ## Setup
@@ -56,7 +56,7 @@ Or, if you don't have the repo cloned, just ask Claude Code:
 Add to your Claude Code MCP config:
 
 ```bash
-claude mcp add codex -- npx -p claude-codex-bridge ccb-codex
+claude mcp add codex -- npx claude-codex-bridge codex
 ```
 
 Or add to `.mcp.json` in your project:
@@ -67,7 +67,7 @@ Or add to `.mcp.json` in your project:
     "codex": {
       "type": "stdio",
       "command": "npx",
-      "args": ["-p", "claude-codex-bridge", "ccb-codex"]
+      "args": ["claude-codex-bridge", "codex"]
     }
   }
 }
@@ -83,7 +83,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.claude]
 command = "npx"
-args = ["-p", "claude-codex-bridge", "ccb-claude"]
+args = ["claude-codex-bridge", "claude"]
 tool_timeout_sec = 300
 ```
 
@@ -93,33 +93,33 @@ tool_timeout_sec = 300
 
 ### `ccb-codex` — Claude calls Codex
 
-| Tool | Description |
-|------|-------------|
-| `codex_query` | Ask Codex a question or give it a task |
-| `codex_review_code` | Ask Codex to review code changes |
-| `codex_review_plan` | Ask Codex to critique an implementation plan |
+| Tool                 | Description                                      |
+| -------------------- | ------------------------------------------------ |
+| `codex_query`        | Ask Codex a question or give it a task           |
+| `codex_review_code`  | Ask Codex to review code changes                 |
+| `codex_review_plan`  | Ask Codex to critique an implementation plan     |
 | `codex_explain_code` | Ask Codex to explain code / logic / architecture |
-| `codex_plan_perf` | Ask Codex to plan performance improvements |
-| `codex_implement` | Ask Codex to write or modify code |
+| `codex_plan_perf`    | Ask Codex to plan performance improvements       |
+| `codex_implement`    | Ask Codex to write or modify code                |
 
 ### `ccb-claude` — Codex calls Claude
 
-| Tool | Description |
-|------|-------------|
-| `claude_query` | Ask Claude a question or give it a task |
-| `claude_review_code` | Ask Claude to review code changes |
-| `claude_review_plan` | Ask Claude to critique an implementation plan |
+| Tool                  | Description                                       |
+| --------------------- | ------------------------------------------------- |
+| `claude_query`        | Ask Claude a question or give it a task           |
+| `claude_review_code`  | Ask Claude to review code changes                 |
+| `claude_review_plan`  | Ask Claude to critique an implementation plan     |
 | `claude_explain_code` | Ask Claude to explain code / logic / architecture |
-| `claude_plan_perf` | Ask Claude to plan performance improvements |
-| `claude_implement` | Ask Claude to write or modify code |
+| `claude_plan_perf`    | Ask Claude to plan performance improvements       |
+| `claude_implement`    | Ask Claude to write or modify code                |
 
 ## Configuration
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `BRIDGE_TIMEOUT_MS` | Subprocess timeout in milliseconds | `300000` (5 min) |
-| `BRIDGE_DEBUG` | Enable debug logging to stderr | — |
-| `BRIDGE_DEPTH` | Current recursion depth (set automatically) | `0` |
+| Variable            | Description                                 | Default          |
+| ------------------- | ------------------------------------------- | ---------------- |
+| `BRIDGE_TIMEOUT_MS` | Subprocess timeout in milliseconds          | `300000` (5 min) |
+| `BRIDGE_DEBUG`      | Enable debug logging to stderr              | —                |
+| `BRIDGE_DEPTH`      | Current recursion depth (set automatically) | `0`              |
 
 ### Anti-Recursion Guard
 

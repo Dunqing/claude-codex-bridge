@@ -14,7 +14,7 @@ The user may pass an argument: `both` (default), `claude`, or `codex`.
 Run this command to register the codex MCP server:
 
 ```bash
-claude mcp add codex -s user -- npx -p claude-codex-bridge ccb-codex
+claude mcp add codex -s user -- npx claude-codex-bridge codex
 ```
 
 After running, verify it was added by checking:
@@ -34,7 +34,7 @@ Confirm that `codex` appears in the list.
 ```toml
 [mcp_servers.claude]
 command = "npx"
-args = ["-p", "claude-codex-bridge", "ccb-claude"]
+args = ["claude-codex-bridge", "claude"]
 tool_timeout_sec = 300
 ```
 

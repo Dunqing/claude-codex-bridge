@@ -4,6 +4,7 @@
   "description": "Bidirectional MCP server bridge between Claude Code and Codex CLI",
   "type": "module",
   "bin": {
+    "claude-codex-bridge": "./dist/cli.mjs",
     "ccb-codex": "./dist/codex-server.mjs",
     "ccb-claude": "./dist/claude-server.mjs"
   },

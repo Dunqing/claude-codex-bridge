@@ -1,7 +1,7 @@
 import { defineConfig } from "tsdown";
 
 export default defineConfig({
-  entry: ["src/codex-server.ts", "src/claude-server.ts"],
+  entry: ["src/cli.ts", "src/codex-server.ts", "src/claude-server.ts"],
   format: "esm",
   dts: true,
   clean: true,
