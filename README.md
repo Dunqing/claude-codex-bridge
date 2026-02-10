@@ -11,11 +11,12 @@ Bidirectional MCP server bridge between **Claude Code** and **OpenAI Codex CLI**
 ## Install
 
 ```bash
-# From npm
-npm install -g claude-codex-bridge
+# No install needed — use directly via npx
+npx -p claude-codex-bridge ccb-codex
+npx -p claude-codex-bridge ccb-claude
 
-# Or clone and build
-git clone https://github.com/user/claude-codex-bridge.git
+# Or clone and build locally
+git clone https://github.com/Dunqing/claude-codex-bridge.git
 cd claude-codex-bridge
 pnpm install
 pnpm build
@@ -23,12 +24,28 @@ pnpm build
 
 ## Setup
 
-### Claude Code → Codex (let Claude call Codex)
+### Automatic (recommended)
+
+Run `/setup` in Claude Code to automatically configure both directions:
+
+```
+/setup          # Set up both Claude Code and Codex
+/setup claude   # Only set up Claude Code → Codex
+/setup codex    # Only set up Codex → Claude
+```
+
+If you don't have the repo cloned, you can simply ask Claude Code:
+
+> Please help me set up claude-codex-bridge MCP for both Claude Code and Codex according to https://github.com/Dunqing/claude-codex-bridge/blob/main/.claude/skills/setup/SKILL.md
+
+### Manual
+
+#### Claude Code → Codex (let Claude call Codex)
 
 Add to your Claude Code MCP config:
 
 ```bash
-claude mcp add codex -- node /path/to/claude-codex-bridge/dist/codex-server.js
+claude mcp add codex -- npx -p claude-codex-bridge ccb-codex
 ```
 
 Or add to `.mcp.json` in your project:
@@ -38,21 +55,21 @@ Or add to `.mcp.json` in your project:
   "mcpServers": {
     "codex": {
       "type": "stdio",
-      "command": "node",
-      "args": ["/path/to/claude-codex-bridge/dist/codex-server.js"]
+      "command": "npx",
+      "args": ["-p", "claude-codex-bridge", "ccb-codex"]
     }
   }
 }
 ```
 
-### Codex → Claude (let Codex call Claude)
+#### Codex → Claude (let Codex call Claude)
 
 Add to `~/.codex/config.toml`:
 
 ```toml
 [mcp_servers.claude]
-command = "node"
-args = ["/path/to/claude-codex-bridge/dist/claude-server.js"]
+command = "npx"
+args = ["-p", "claude-codex-bridge", "ccb-claude"]
 tool_timeout_sec = 300
 ```
 
