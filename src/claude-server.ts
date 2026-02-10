@@ -77,6 +77,9 @@ async function runClaude(
   return parsed;
 }
 
+// Safety limit to prevent exceeding MCP response token limits.
+const MAX_RESPONSE_CHARS = 80_000;
+
 function formatClaudeResponse(parsed: ClaudeResult): {
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
@@ -88,7 +91,12 @@ function formatClaudeResponse(parsed: ClaudeResult): {
     };
   }
 
-  return { content: [{ type: "text" as const, text: parsed.resultText }] };
+  let text = parsed.resultText;
+  if (text.length > MAX_RESPONSE_CHARS) {
+    text = text.slice(0, MAX_RESPONSE_CHARS) + "\n\n...[response truncated]";
+  }
+
+  return { content: [{ type: "text" as const, text }] };
 }
 
 // Read-only tool set for review/analysis tasks

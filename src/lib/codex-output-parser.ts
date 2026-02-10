@@ -1,10 +1,24 @@
 import { logger } from "./logger.js";
 import type { CodexResult } from "./types.js";
 
+// Max characters to store per command output to prevent memory bloat.
+const MAX_COMMAND_OUTPUT = 10_000;
+
+function truncate(text: string, max: number): string {
+  if (text.length <= max) return text;
+  return text.slice(0, max) + "\n...[truncated]";
+}
+
 /**
  * Parses the JSONL output from `codex exec --json`.
  * Each line is a JSON event with a `type` field.
- * We extract the final agent message, file changes, commands, and usage.
+ *
+ * Real Codex CLI uses a **nested** format where item data lives inside
+ * an `item` object:
+ *   {"type":"item.completed","item":{"type":"agent_message","text":"..."}}
+ *
+ * We also support a legacy flat format for backward compatibility:
+ *   {"type":"item.completed","itemType":"agent_message","text":"..."}
  */
 export function parseCodexOutput(jsonlOutput: string): CodexResult {
   const result: CodexResult = {
@@ -32,24 +46,41 @@ export function parseCodexOutput(jsonlOutput: string): CodexResult {
 
     switch (type) {
       case "thread.started": {
-        result.threadId = (event["threadId"] as string) ?? null;
+        result.threadId = (event["thread_id"] as string) ?? (event["threadId"] as string) ?? null;
         break;
       }
 
       case "item.completed": {
-        const itemType = event["itemType"] as string | undefined;
+        // Support both nested (real Codex) and flat (legacy) formats.
+        const item = (event["item"] as Record<string, unknown>) ?? null;
+        const itemType = (item?.["type"] as string) ?? (event["itemType"] as string) ?? undefined;
+
         if (itemType === "agent_message" || itemType === "message") {
-          const text = (event["text"] as string) ?? (event["content"] as string) ?? "";
+          const text =
+            (item?.["text"] as string) ??
+            (event["text"] as string) ??
+            (item?.["content"] as string) ??
+            (event["content"] as string) ??
+            "";
           if (text) result.agentMessage = text;
         } else if (itemType === "file_change") {
-          const path = (event["path"] as string) ?? "";
-          const kind = (event["kind"] as string) ?? "update";
+          const path = (item?.["path"] as string) ?? (event["path"] as string) ?? "";
+          const kind = (item?.["kind"] as string) ?? (event["kind"] as string) ?? "update";
           if (path) result.fileChanges.push({ path, kind });
         } else if (itemType === "command_execution") {
+          const output =
+            (item?.["aggregated_output"] as string) ??
+            (item?.["output"] as string) ??
+            (event["output"] as string) ??
+            "";
           result.commandsExecuted.push({
-            command: (event["command"] as string) ?? "",
-            exitCode: (event["exitCode"] as number) ?? null,
-            output: (event["output"] as string) ?? "",
+            command: (item?.["command"] as string) ?? (event["command"] as string) ?? "",
+            exitCode:
+              (item?.["exit_code"] as number) ??
+              (item?.["exitCode"] as number) ??
+              (event["exitCode"] as number) ??
+              null,
+            output: truncate(output, MAX_COMMAND_OUTPUT),
           });
         }
         break;

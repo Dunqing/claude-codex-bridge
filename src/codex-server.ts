@@ -75,6 +75,9 @@ async function runCodex(
   return parsed;
 }
 
+// Safety limit to prevent exceeding MCP response token limits.
+const MAX_RESPONSE_CHARS = 80_000;
+
 function formatCodexResponse(parsed: CodexResult): {
   content: Array<{ type: "text"; text: string }>;
   isError?: boolean;
@@ -100,6 +103,10 @@ function formatCodexResponse(parsed: CodexResult): {
     for (const cmd of parsed.commandsExecuted) {
       text += `- \`${cmd.command}\` (exit: ${cmd.exitCode})\n`;
     }
+  }
+
+  if (text.length > MAX_RESPONSE_CHARS) {
+    text = text.slice(0, MAX_RESPONSE_CHARS) + "\n\n...[response truncated]";
   }
 
   return { content: [{ type: "text" as const, text }] };
