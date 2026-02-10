@@ -122,11 +122,13 @@ You can spawn Codex as a **Claude Code teammate** — a subagent that automatica
 ```bash
 # Global (available in all projects)
 mkdir -p ~/.claude/agents
-cp "$(npm prefix -g)/lib/node_modules/claude-codex-bridge/agents/codex-teammate.md" ~/.claude/agents/
+curl -fsSL https://raw.githubusercontent.com/Dunqing/claude-codex-bridge/main/agents/codex-teammate.md \
+  -o ~/.claude/agents/codex-teammate.md
 
-# Or project-local (requires: npm i -D claude-codex-bridge)
+# Or project-local
 mkdir -p .claude/agents
-cp node_modules/claude-codex-bridge/agents/codex-teammate.md .claude/agents/
+curl -fsSL https://raw.githubusercontent.com/Dunqing/claude-codex-bridge/main/agents/codex-teammate.md \
+  -o .claude/agents/codex-teammate.md
 ```
 
 ### Usage

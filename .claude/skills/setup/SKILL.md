@@ -44,33 +44,22 @@ Be careful not to duplicate the section if it already exists. If it exists, ask 
 
 The codex-teammate agent lets you spawn Codex as a Claude Code subagent/teammate. It knows how to use all 6 codex bridge tools automatically.
 
-1. Locate the agent template. Try these sources in order:
+1. Download the agent template to the user's global agents directory (or project-local):
 
 ```bash
-# If installed locally (node_modules exists)
-ls node_modules/claude-codex-bridge/agents/codex-teammate.md 2>/dev/null
-
-# If installed globally
-ls "$(npm prefix -g)/lib/node_modules/claude-codex-bridge/agents/codex-teammate.md" 2>/dev/null
-```
-
-2. Copy it to the user's global agents directory:
-
-```bash
+# Global (available in all projects)
 mkdir -p ~/.claude/agents
-
-# From local node_modules
-cp node_modules/claude-codex-bridge/agents/codex-teammate.md ~/.claude/agents/codex-teammate.md
-
-# Or from global install
-cp "$(npm prefix -g)/lib/node_modules/claude-codex-bridge/agents/codex-teammate.md" ~/.claude/agents/codex-teammate.md
+curl -fsSL https://raw.githubusercontent.com/Dunqing/claude-codex-bridge/main/agents/codex-teammate.md \
+  -o ~/.claude/agents/codex-teammate.md
 ```
 
-Or, if the user prefers a project-local agent, copy to the project's `.claude/agents/` instead (requires local install: `npm i -D claude-codex-bridge`):
+Or, if the user prefers a project-local agent:
 
 ```bash
+# Project-local
 mkdir -p .claude/agents
-cp node_modules/claude-codex-bridge/agents/codex-teammate.md .claude/agents/codex-teammate.md
+curl -fsSL https://raw.githubusercontent.com/Dunqing/claude-codex-bridge/main/agents/codex-teammate.md \
+  -o .claude/agents/codex-teammate.md
 ```
 
 3. Verify the agent is available by starting a new Claude Code session. The agent will appear as `codex-teammate` subagent type in the Task tool.
