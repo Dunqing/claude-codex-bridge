@@ -5,6 +5,8 @@ import type { ExecOptions, ExecResult } from "./types.js";
 
 const DEFAULT_TIMEOUT_MS = 600_000; // 10 minutes
 const MAX_BRIDGE_DEPTH = 2;
+const DEFAULT_MAX_RETRIES = 2;
+const MAX_RETRY_DELAY_MS = 10_000;
 
 function getTimeoutMs(): number {
   const env = process.env["BRIDGE_TIMEOUT_MS"];
@@ -13,6 +15,15 @@ function getTimeoutMs(): number {
     if (!Number.isNaN(parsed) && parsed > 0) return parsed;
   }
   return DEFAULT_TIMEOUT_MS;
+}
+
+function getMaxRetries(): number {
+  const env = process.env["BRIDGE_MAX_RETRIES"];
+  if (env) {
+    const parsed = parseInt(env, 10);
+    if (!Number.isNaN(parsed) && parsed >= 0) return parsed;
+  }
+  return DEFAULT_MAX_RETRIES;
 }
 
 function checkRecursionDepth(): void {
@@ -25,9 +36,52 @@ function checkRecursionDepth(): void {
   }
 }
 
-export function execCommand(options: ExecOptions): Promise<ExecResult> {
-  checkRecursionDepth();
+// ---------------------------------------------------------------------------
+// Transient error detection
+// ---------------------------------------------------------------------------
 
+const TRANSIENT_PATTERNS = [
+  "rate limit",
+  "too many requests",
+  "429",
+  "500",
+  "502",
+  "503",
+  "504",
+  "internal server error",
+  "bad gateway",
+  "service unavailable",
+  "gateway timeout",
+  "connection reset",
+  "connection refused",
+  "econnreset",
+  "econnrefused",
+  "etimedout",
+  "network error",
+  "fetch failed",
+  "socket hang up",
+];
+
+export function isTransientError(result: ExecResult): boolean {
+  if (result.exitCode === 0) return false;
+  if (result.timedOut) return false;
+  const stderr = result.stderr.toLowerCase();
+  return TRANSIENT_PATTERNS.some((pattern) => stderr.includes(pattern));
+}
+
+function retryDelayMs(attempt: number): number {
+  return Math.min(1000 * 2 ** attempt, MAX_RETRY_DELAY_MS);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// ---------------------------------------------------------------------------
+// Core exec (single attempt)
+// ---------------------------------------------------------------------------
+
+function execOnce(options: ExecOptions): Promise<ExecResult> {
   const timeoutMs = options.timeoutMs ?? getTimeoutMs();
   const currentDepth = parseInt(process.env["BRIDGE_DEPTH"] ?? "0", 10);
 
@@ -116,4 +170,29 @@ export function execCommand(options: ExecOptions): Promise<ExecResult> {
       });
     });
   });
+}
+
+// ---------------------------------------------------------------------------
+// Public API — exec with automatic retry on transient errors
+// ---------------------------------------------------------------------------
+
+export async function execCommand(options: ExecOptions): Promise<ExecResult> {
+  checkRecursionDepth();
+
+  const maxRetries = options.maxRetries ?? getMaxRetries();
+
+  for (let attempt = 0; ; attempt++) {
+    const result = await execOnce(options);
+
+    if (attempt < maxRetries && isTransientError(result)) {
+      const delay = retryDelayMs(attempt);
+      logger.warn(
+        `Transient error detected (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${delay}ms...`,
+      );
+      await sleep(delay);
+      continue;
+    }
+
+    return result;
+  }
 }
