@@ -1,38 +1,12 @@
-// All logging MUST go to stderr — stdout is the MCP JSON-RPC channel.
-// When an MCP server is attached, logs are also sent via the MCP protocol
-// so Claude Code can display them in real-time.
-import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import type { LoggingLevel } from "@modelcontextprotocol/sdk/types.js";
+// All logging goes to stderr — stdout is the MCP JSON-RPC channel.
 
 const isDebug = !!process.env["BRIDGE_DEBUG"];
 
-let mcpServer: McpServer | null = null;
+type LogLevel = "info" | "warning" | "error" | "debug";
 
-/** Attach an MCP server so log messages are sent via the protocol. */
-export function setMcpServer(server: McpServer): void {
-  mcpServer = server;
-}
-
-function formatArgs(args: unknown[]): string {
-  return args
-    .map((a) =>
-      a instanceof Error ? (a.stack ?? a.message) : typeof a === "string" ? a : JSON.stringify(a),
-    )
-    .join(" ");
-}
-
-function log(level: LoggingLevel, msg: string, ...args: unknown[]): void {
-  // Always write to stderr as a fallback.
+function log(level: LogLevel, msg: string, ...args: unknown[]): void {
   const prefix = `[${level.toUpperCase()}]`;
   console.error(`${prefix} ${msg}`, ...args);
-
-  // Send via MCP protocol if a server is attached.
-  if (mcpServer) {
-    const data = args.length > 0 ? `${msg} ${formatArgs(args)}` : msg;
-    mcpServer.sendLoggingMessage({ level, data }).catch(() => {
-      // Swallow — server may not be connected yet.
-    });
-  }
 }
 
 // ---------------------------------------------------------------------------

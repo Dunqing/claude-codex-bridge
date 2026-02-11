@@ -5,18 +5,13 @@ import { z } from "zod";
 import { execCommand } from "./lib/exec-runner.js";
 import { parseClaudeOutput } from "./lib/claude-output-parser.js";
 import { buildExplainCodePrompt, buildPlanPerfPrompt } from "./lib/prompt-builder.js";
-import { createProgressReporter, logger, setMcpServer } from "./lib/logger.js";
-import type { ProgressReporter } from "./lib/logger.js";
+import { createProgressReporter, logger, type ProgressReporter } from "./lib/logger.js";
 import { CLAUDE_MODELS } from "./lib/types.js";
 import type { ClaudeResult } from "./lib/types.js";
 
 let lastSessionId: string | null = null;
 
-const server = new McpServer(
-  { name: "claude-bridge", version: "0.1.0" },
-  { capabilities: { logging: {} } },
-);
-setMcpServer(server);
+const server = new McpServer({ name: "claude-bridge", version: "0.1.0" });
 
 // ---------------------------------------------------------------------------
 // Helpers

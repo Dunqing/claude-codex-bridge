@@ -5,22 +5,13 @@ import { z } from "zod";
 import { execCommand } from "./lib/exec-runner.js";
 import { parseCodexOutput } from "./lib/codex-output-parser.js";
 import { buildExplainCodePrompt, buildPlanPerfPrompt } from "./lib/prompt-builder.js";
-import {
-  createProgressReporter,
-  logger,
-  setMcpServer,
-  type ProgressReporter,
-} from "./lib/logger.js";
+import { createProgressReporter, logger, type ProgressReporter } from "./lib/logger.js";
 import { CODEX_MODELS } from "./lib/types.js";
 import type { CodexResult } from "./lib/types.js";
 
 let lastThreadId: string | null = null;
 
-const server = new McpServer(
-  { name: "codex-bridge", version: "0.1.0" },
-  { capabilities: { logging: {} } },
-);
-setMcpServer(server);
+const server = new McpServer({ name: "codex-bridge", version: "0.1.0" });
 
 // ---------------------------------------------------------------------------
 // Helpers
