@@ -5,10 +5,16 @@ import { z } from "zod";
 import { execCommand } from "./lib/exec-runner.js";
 import { parseCodexOutput } from "./lib/codex-output-parser.js";
 import { buildExplainCodePrompt, buildPlanPerfPrompt } from "./lib/prompt-builder.js";
-import { createProgressReporter, logger, setMcpServer } from "./lib/logger.js";
-import type { ProgressReporter } from "./lib/logger.js";
+import {
+  createProgressReporter,
+  logger,
+  setMcpServer,
+  type ProgressReporter,
+} from "./lib/logger.js";
 import { CODEX_MODELS } from "./lib/types.js";
 import type { CodexResult } from "./lib/types.js";
+
+let lastThreadId: string | null = null;
 
 const server = new McpServer(
   { name: "codex-bridge", version: "0.1.0" },
@@ -65,10 +71,18 @@ async function runCodex(
     progress?: ProgressReporter;
   } = {},
 ): Promise<CodexResult> {
-  const args = ["exec", "--json"];
-  if (options.model) args.push("--model", options.model);
-  if (options.sandbox) args.push("--sandbox", options.sandbox);
-  if (options.fullAuto) args.push("--full-auto");
+  let args: string[];
+  if (lastThreadId) {
+    // Resume an existing thread — --sandbox is not supported on resume
+    args = ["exec", "resume", lastThreadId, "--json"];
+    if (options.model) args.push("--model", options.model);
+    if (options.fullAuto) args.push("--full-auto");
+  } else {
+    args = ["exec", "--json"];
+    if (options.model) args.push("--model", options.model);
+    if (options.sandbox) args.push("--sandbox", options.sandbox);
+    if (options.fullAuto) args.push("--full-auto");
+  }
   args.push(prompt);
 
   options.progress?.report("Starting codex...");
@@ -117,6 +131,11 @@ async function runCodex(
   options.progress?.report("Parsing response...");
   const parsed = parseCodexOutput(result.stdout);
 
+  if (parsed.threadId) {
+    lastThreadId = parsed.threadId;
+    logger.debug(`Stored threadId for session continuity: ${parsed.threadId}`);
+  }
+
   // Check stderr for API key issues
   if (result.exitCode !== 0 && !parsed.agentMessage) {
     const stderr = result.stderr.toLowerCase();
@@ -143,7 +162,7 @@ function formatCodexResponse(parsed: CodexResult): {
 } {
   if (parsed.errors.length > 0 && !parsed.agentMessage) {
     return {
-      content: [{ type: "text" as const, text: `Error: ${parsed.errors.join("; ")}` }],
+      content: [{ type: "text", text: `Error: ${parsed.errors.join("; ")}` }],
       isError: true,
     };
   }
@@ -168,7 +187,7 @@ function formatCodexResponse(parsed: CodexResult): {
     text = text.slice(0, MAX_RESPONSE_CHARS) + "\n\n...[response truncated]";
   }
 
-  return { content: [{ type: "text" as const, text }] };
+  return { content: [{ type: "text", text }] };
 }
 
 // ---------------------------------------------------------------------------
@@ -197,7 +216,12 @@ server.registerTool(
   },
   async ({ prompt, workingDirectory, model, sandbox }, extra) => {
     const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
-    const parsed = await runCodex(prompt, { workingDirectory, model, sandbox, progress });
+    const parsed = await runCodex(prompt, {
+      workingDirectory,
+      model,
+      sandbox,
+      progress,
+    });
     return formatCodexResponse(parsed);
   },
 );
@@ -228,7 +252,11 @@ server.registerTool(
     if (focusAreas) prompt += `\n\nFocus areas: ${focusAreas}`;
     if (context) prompt += `\n\nContext: ${context}`;
 
-    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only", progress });
+    const parsed = await runCodex(prompt, {
+      workingDirectory,
+      sandbox: "read-only",
+      progress,
+    });
     return formatCodexResponse(parsed);
   },
 );
@@ -255,7 +283,11 @@ server.registerTool(
     if (codebasePath) prompt += `\n\nRelevant codebase: ${codebasePath}`;
     if (constraints) prompt += `\n\nConstraints: ${constraints}`;
 
-    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only", progress });
+    const parsed = await runCodex(prompt, {
+      workingDirectory,
+      sandbox: "read-only",
+      progress,
+    });
     return formatCodexResponse(parsed);
   },
 );
@@ -282,7 +314,11 @@ server.registerTool(
   async ({ target, depth, context, workingDirectory }, extra) => {
     const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
     const prompt = buildExplainCodePrompt({ target, depth, context });
-    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only", progress });
+    const parsed = await runCodex(prompt, {
+      workingDirectory,
+      sandbox: "read-only",
+      progress,
+    });
     return formatCodexResponse(parsed);
   },
 );
@@ -310,7 +346,11 @@ server.registerTool(
   async ({ target, metrics, constraints, context, workingDirectory }, extra) => {
     const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
     const prompt = buildPlanPerfPrompt({ target, metrics, constraints, context });
-    const parsed = await runCodex(prompt, { workingDirectory, sandbox: "read-only", progress });
+    const parsed = await runCodex(prompt, {
+      workingDirectory,
+      sandbox: "read-only",
+      progress,
+    });
     return formatCodexResponse(parsed);
   },
 );

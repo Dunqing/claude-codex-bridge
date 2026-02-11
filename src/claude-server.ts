@@ -10,6 +10,8 @@ import type { ProgressReporter } from "./lib/logger.js";
 import { CLAUDE_MODELS } from "./lib/types.js";
 import type { ClaudeResult } from "./lib/types.js";
 
+let lastSessionId: string | null = null;
+
 const server = new McpServer(
   { name: "claude-bridge", version: "0.1.0" },
   { capabilities: { logging: {} } },
@@ -27,10 +29,12 @@ async function runClaude(
     model?: string;
     maxTurns?: number;
     allowedTools?: string[];
+    sessionId?: string;
     progress?: ProgressReporter;
   } = {},
 ): Promise<ClaudeResult> {
   const args = ["-p", "--output-format", "json"];
+  if (options.sessionId) args.push("--resume", options.sessionId);
   if (options.model) args.push("--model", options.model);
   if (options.maxTurns) args.push("--max-turns", String(options.maxTurns));
   if (options.allowedTools && options.allowedTools.length > 0) {
@@ -87,6 +91,11 @@ async function runClaude(
 
   options.progress?.report("Parsing response...");
   const parsed = parseClaudeOutput(result.stdout);
+
+  if (parsed.sessionId) {
+    lastSessionId = parsed.sessionId;
+    logger.debug(`Stored sessionId for session continuity: ${parsed.sessionId}`);
+  }
 
   // Check stderr for API key issues
   if (result.exitCode !== 0 && !parsed.resultText) {
@@ -172,6 +181,7 @@ server.registerTool(
       model,
       maxTurns,
       allowedTools,
+      sessionId: lastSessionId ?? undefined,
       progress,
     });
     return formatClaudeResponse(parsed);
@@ -205,6 +215,7 @@ server.registerTool(
       workingDirectory,
       maxTurns,
       allowedTools: READ_ONLY_TOOLS,
+      sessionId: lastSessionId ?? undefined,
       progress,
     });
     return formatClaudeResponse(parsed);
@@ -235,6 +246,7 @@ server.registerTool(
       workingDirectory,
       maxTurns,
       allowedTools: READ_ONLY_TOOLS,
+      sessionId: lastSessionId ?? undefined,
       progress,
     });
     return formatClaudeResponse(parsed);
@@ -268,6 +280,7 @@ server.registerTool(
       workingDirectory,
       maxTurns,
       allowedTools: READ_ONLY_TOOLS,
+      sessionId: lastSessionId ?? undefined,
       progress,
     });
     return formatClaudeResponse(parsed);
@@ -299,6 +312,7 @@ server.registerTool(
       workingDirectory,
       maxTurns,
       allowedTools: READ_ONLY_TOOLS,
+      sessionId: lastSessionId ?? undefined,
       progress,
     });
     return formatClaudeResponse(parsed);
@@ -320,7 +334,13 @@ server.registerTool(
   },
   async ({ task, workingDirectory, model, maxTurns }, extra) => {
     const progress = createProgressReporter(extra.sendNotification, extra._meta?.progressToken);
-    const parsed = await runClaude(task, { workingDirectory, model, maxTurns, progress });
+    const parsed = await runClaude(task, {
+      workingDirectory,
+      model,
+      maxTurns,
+      sessionId: lastSessionId ?? undefined,
+      progress,
+    });
     return formatClaudeResponse(parsed);
   },
 );
