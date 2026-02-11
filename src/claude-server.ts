@@ -10,10 +10,10 @@ import type { ProgressReporter } from "./lib/logger.js";
 import { CLAUDE_MODELS } from "./lib/types.js";
 import type { ClaudeResult } from "./lib/types.js";
 
-const server = new McpServer({
-  name: "claude-bridge",
-  version: "0.1.0",
-});
+const server = new McpServer(
+  { name: "claude-bridge", version: "0.1.0" },
+  { capabilities: { logging: {} } },
+);
 setMcpServer(server);
 
 // ---------------------------------------------------------------------------

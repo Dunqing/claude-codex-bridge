@@ -13,6 +13,14 @@ export function setMcpServer(server: McpServer): void {
   mcpServer = server;
 }
 
+function formatArgs(args: unknown[]): string {
+  return args
+    .map((a) =>
+      a instanceof Error ? (a.stack ?? a.message) : typeof a === "string" ? a : JSON.stringify(a),
+    )
+    .join(" ");
+}
+
 function log(level: LoggingLevel, msg: string, ...args: unknown[]): void {
   // Always write to stderr as a fallback.
   const prefix = `[${level.toUpperCase()}]`;
@@ -20,7 +28,8 @@ function log(level: LoggingLevel, msg: string, ...args: unknown[]): void {
 
   // Send via MCP protocol if a server is attached.
   if (mcpServer) {
-    mcpServer.sendLoggingMessage({ level, data: msg }).catch(() => {
+    const data = args.length > 0 ? `${msg} ${formatArgs(args)}` : msg;
+    mcpServer.sendLoggingMessage({ level, data }).catch(() => {
       // Swallow — server may not be connected yet.
     });
   }
@@ -44,11 +53,11 @@ export function createProgressReporter(
     };
   }) => Promise<void>,
   progressToken: string | number | undefined,
-): ProgressReporter {
+): ProgressReporter | undefined {
+  if (progressToken === undefined) return undefined;
   let step = 0;
   return {
     report(message: string) {
-      if (progressToken === undefined) return;
       step++;
       sendNotification({
         method: "notifications/progress",
