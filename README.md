@@ -89,6 +89,67 @@ tool_timeout_sec = 600
 
 </details>
 
+## Usage
+
+Once set up, just talk to Claude Code or Codex naturally. The bridge tools are picked up automatically.
+
+### In Claude Code — ask Codex for help
+
+```
+> Ask Codex to review my recent changes
+
+> Get Codex's opinion on whether this approach is correct: [paste plan]
+
+> Have Codex explain how the parser in src/lib/codex-output-parser.ts works
+
+> Ask Codex to analyze performance bottlenecks in the exec runner
+
+> Ask Codex to implement error handling for the retry logic
+```
+
+### In Codex — ask Claude for help
+
+```
+> Ask Claude to review the changes in HEAD~3..HEAD
+
+> Have Claude explain the architecture of this project
+
+> Ask Claude to critique my plan for adding caching
+```
+
+### Using the `/codex` slash command
+
+Install the skill to get the `/codex` shortcut in Claude Code:
+
+```bash
+# Global (available in all projects)
+mkdir -p ~/.claude/skills/codex
+curl -fsSL https://raw.githubusercontent.com/Dunqing/claude-codex-bridge/main/.claude/skills/codex/SKILL.md \
+  -o ~/.claude/skills/codex/SKILL.md
+
+# Or project-local
+mkdir -p .claude/skills/codex
+curl -fsSL https://raw.githubusercontent.com/Dunqing/claude-codex-bridge/main/.claude/skills/codex/SKILL.md \
+  -o .claude/skills/codex/SKILL.md
+```
+
+Then use it:
+
+```
+/codex review my recent changes
+/codex explain src/lib/exec-runner.ts
+/codex is my approach to retry logic correct?
+/codex optimize the output parser for memory usage
+```
+
+### Spawning Codex as a teammate
+
+For parallel work, spawn Codex as a subagent:
+
+```
+> Spawn a codex-teammate to review src/lib/exec-runner.ts while we keep working
+```
+
 ## Tools
 
 ### `ccb-codex` — Claude calls Codex
@@ -156,11 +217,12 @@ The agent automatically picks the right Codex tool (`codex_review_code`, `codex_
 
 ## Configuration
 
-| Variable            | Description                                 | Default           |
-| ------------------- | ------------------------------------------- | ----------------- |
-| `BRIDGE_TIMEOUT_MS` | Subprocess timeout in milliseconds          | `600000` (10 min) |
-| `BRIDGE_DEBUG`      | Enable debug logging to stderr              | —                 |
-| `BRIDGE_DEPTH`      | Current recursion depth (set automatically) | `0`               |
+| Variable             | Description                                                  | Default           |
+| -------------------- | ------------------------------------------------------------ | ----------------- |
+| `BRIDGE_TIMEOUT_MS`  | Subprocess timeout in milliseconds                           | `600000` (10 min) |
+| `BRIDGE_MAX_RETRIES` | Auto-retries on transient errors (rate limits, 5xx, network) | `2`               |
+| `BRIDGE_DEBUG`       | Enable debug logging to stderr                               | —                 |
+| `BRIDGE_DEPTH`       | Current recursion depth (set automatically)                  | `0`               |
 
 ### Anti-Recursion Guard
 
