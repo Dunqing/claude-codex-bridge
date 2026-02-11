@@ -12,29 +12,42 @@ function runCli(args: string[]) {
 }
 
 describe("cli", () => {
-  it("exits with error and shows usage when no subcommand given", async () => {
+  it("shows help with available commands when no subcommand given", async () => {
     const result = await runCli([]);
     expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toContain("Usage: claude-codex-bridge");
-    expect(result.stderr).toContain("codex");
-    expect(result.stderr).toContain("claude");
+    const output = result.stdout + result.stderr;
+    expect(output).toContain("serve");
+    expect(output).toContain("setup");
+    expect(output).toContain("install");
   });
 
   it("exits with error for unknown subcommand", async () => {
     const result = await runCli(["unknown"]);
     expect(result.exitCode).not.toBe(0);
-    expect(result.stderr).toContain("Usage: claude-codex-bridge");
+    expect(result.stderr).toContain("Unknown command");
   });
 
-  it("starts codex server on 'codex' subcommand", async () => {
-    const result = await runCli(["codex"]);
+  it("starts codex server on 'serve codex'", async () => {
+    const result = await runCli(["serve", "codex"]);
     // The server starts on stdio and blocks waiting for input,
     // so it will be killed by timeout. Check that it started successfully.
     expect(result.stderr).toContain("codex-bridge MCP server started");
   });
 
-  it("starts claude server on 'claude' subcommand", async () => {
-    const result = await runCli(["claude"]);
+  it("starts claude server on 'serve claude'", async () => {
+    const result = await runCli(["serve", "claude"]);
     expect(result.stderr).toContain("claude-bridge MCP server started");
+  });
+
+  it("shows serve help with codex and claude subcommands", async () => {
+    const result = await runCli(["serve", "--help"]);
+    expect(result.stdout).toContain("codex");
+    expect(result.stdout).toContain("claude");
+  });
+
+  it("shows install help with skill and agent subcommands", async () => {
+    const result = await runCli(["install", "--help"]);
+    expect(result.stdout).toContain("skill");
+    expect(result.stdout).toContain("agent");
   });
 });

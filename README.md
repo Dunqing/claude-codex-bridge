@@ -25,28 +25,26 @@ Let Claude and Codex work as partners — each can ask the other for help, revie
 
 ## Quick Start
 
-No install needed — use directly via `npx`:
+Set up everything with a single command:
 
 ```bash
-npx claude-codex-bridge codex    # Start the Codex server
-npx claude-codex-bridge claude   # Start the Claude server
+npx claude-codex-bridge setup
 ```
+
+This registers MCP servers for both Claude Code and Codex, and installs the `/codex` skill and codex-teammate agent.
 
 ## Setup
 
 ### Automatic (recommended)
 
-Run `/setup` inside Claude Code to automatically configure both directions:
-
+```bash
+npx claude-codex-bridge setup              # Full setup: both directions + skill + agent
+npx claude-codex-bridge setup claude       # Only Claude Code → Codex
+npx claude-codex-bridge setup codex        # Only Codex → Claude
+npx claude-codex-bridge setup --skip-extras  # MCP servers only, no skill/agent
 ```
-/setup          # Set up both Claude Code and Codex
-/setup claude   # Only set up Claude Code → Codex
-/setup codex    # Only set up Codex → Claude
-```
 
-Or, if you don't have the repo cloned, just ask Claude Code:
-
-> Please help me set up claude-codex-bridge MCP for both Claude Code and Codex according to https://github.com/Dunqing/claude-codex-bridge/blob/main/.claude/skills/setup/SKILL.md
+Use `--global` or `--local` to control where the skill and agent are installed (defaults to interactive prompt).
 
 ### Manual
 
@@ -56,7 +54,7 @@ Or, if you don't have the repo cloned, just ask Claude Code:
 Add to your Claude Code MCP config:
 
 ```bash
-claude mcp add codex -- npx claude-codex-bridge codex
+claude mcp add codex -s user -- npx claude-codex-bridge serve codex
 ```
 
 Or add to `.mcp.json` in your project:
@@ -67,7 +65,7 @@ Or add to `.mcp.json` in your project:
     "codex": {
       "type": "stdio",
       "command": "npx",
-      "args": ["claude-codex-bridge", "codex"]
+      "args": ["claude-codex-bridge", "serve", "codex"]
     }
   }
 }
@@ -83,7 +81,7 @@ Add to `~/.codex/config.toml`:
 ```toml
 [mcp_servers.claude]
 command = "npx"
-args = ["claude-codex-bridge", "claude"]
+args = ["claude-codex-bridge", "serve", "claude"]
 tool_timeout_sec = 600
 ```
 
@@ -117,20 +115,12 @@ Once set up, just talk to Claude Code or Codex naturally. The bridge tools are p
 > Ask Claude to critique my plan for adding caching
 ```
 
-### Using the `/codex` slash command
+### Using the `/codex` slash command (Claude Code)
 
 Install the skill to get the `/codex` shortcut in Claude Code:
 
 ```bash
-# Global (available in all projects)
-mkdir -p ~/.claude/skills/codex
-curl -fsSL https://raw.githubusercontent.com/Dunqing/claude-codex-bridge/main/.claude/skills/codex/SKILL.md \
-  -o ~/.claude/skills/codex/SKILL.md
-
-# Or project-local
-mkdir -p .claude/skills/codex
-curl -fsSL https://raw.githubusercontent.com/Dunqing/claude-codex-bridge/main/.claude/skills/codex/SKILL.md \
-  -o .claude/skills/codex/SKILL.md
+npx claude-codex-bridge install skill claude --global    # or --local
 ```
 
 Then use it:
@@ -138,13 +128,29 @@ Then use it:
 ```
 /codex review my recent changes
 /codex explain src/lib/exec-runner.ts
-/codex is my approach to retry logic correct?
+/codex is my approach to caching correct?
 /codex optimize the output parser for memory usage
+```
+
+### Using the `/claude` slash command (Codex)
+
+Install the skill to get the `/claude` shortcut in Codex:
+
+```bash
+npx claude-codex-bridge install skill codex --global    # or --local
+```
+
+Then use it:
+
+```
+/claude review my recent changes
+/claude explain the architecture of this project
+/claude critique my plan for adding caching
 ```
 
 ### Spawning Codex as a teammate
 
-For parallel work, spawn Codex as a subagent:
+For parallel work, spawn Codex as a subagent from Claude Code:
 
 ```
 > Spawn a codex-teammate to review src/lib/exec-runner.ts while we keep working
@@ -181,15 +187,7 @@ You can spawn Codex as a **Claude Code teammate** — a subagent that automatica
 ### Install the Agent
 
 ```bash
-# Global (available in all projects)
-mkdir -p ~/.claude/agents
-curl -fsSL https://raw.githubusercontent.com/Dunqing/claude-codex-bridge/main/agents/codex-teammate.md \
-  -o ~/.claude/agents/codex-teammate.md
-
-# Or project-local
-mkdir -p .claude/agents
-curl -fsSL https://raw.githubusercontent.com/Dunqing/claude-codex-bridge/main/agents/codex-teammate.md \
-  -o .claude/agents/codex-teammate.md
+npx claude-codex-bridge install agent --global    # or --local
 ```
 
 ### Usage

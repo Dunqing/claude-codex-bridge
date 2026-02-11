@@ -14,7 +14,7 @@ The user may pass an argument: `both` (default), `claude`, or `codex`.
 Run this command to register the codex MCP server:
 
 ```bash
-claude mcp add codex -s user -- npx claude-codex-bridge codex
+claude mcp add codex -s user -- npx claude-codex-bridge serve codex
 ```
 
 After running, verify it was added by checking:
@@ -34,8 +34,8 @@ Confirm that `codex` appears in the list.
 ```toml
 [mcp_servers.claude]
 command = "npx"
-args = ["claude-codex-bridge", "claude"]
-tool_timeout_sec = 300
+args = ["claude-codex-bridge", "serve", "claude"]
+tool_timeout_sec = 600
 ```
 
 Be careful not to duplicate the section if it already exists. If it exists, ask the user if they want to update it.
@@ -44,25 +44,31 @@ Be careful not to duplicate the section if it already exists. If it exists, ask 
 
 The codex-teammate agent lets you spawn Codex as a Claude Code subagent/teammate. It knows how to use all 6 codex bridge tools automatically.
 
-1. Download the agent template to the user's global agents directory (or project-local):
+Run:
 
 ```bash
-# Global (available in all projects)
-mkdir -p ~/.claude/agents
-curl -fsSL https://raw.githubusercontent.com/Dunqing/claude-codex-bridge/main/agents/codex-teammate.md \
-  -o ~/.claude/agents/codex-teammate.md
+npx claude-codex-bridge install agent --global
 ```
 
-Or, if the user prefers a project-local agent:
+Or for project-local:
 
 ```bash
-# Project-local
-mkdir -p .claude/agents
-curl -fsSL https://raw.githubusercontent.com/Dunqing/claude-codex-bridge/main/agents/codex-teammate.md \
-  -o .claude/agents/codex-teammate.md
+npx claude-codex-bridge install agent --local
 ```
 
-3. Verify the agent is available by starting a new Claude Code session. The agent will appear as `codex-teammate` subagent type in the Task tool.
+Verify the agent is available by starting a new Claude Code session. The agent will appear as `codex-teammate` subagent type in the Task tool.
+
+## Install /codex Skill for Claude Code (optional)
+
+```bash
+npx claude-codex-bridge install skill claude --global
+```
+
+## Install /claude Skill for Codex (optional)
+
+```bash
+npx claude-codex-bridge install skill codex --global
+```
 
 ## After Setup
 

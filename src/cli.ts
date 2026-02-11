@@ -1,14 +1,16 @@
 #!/usr/bin/env node
+import { defineCommand, runMain } from "citty";
 
-const subcommand = process.argv[2];
+const main = defineCommand({
+  meta: {
+    name: "claude-codex-bridge",
+    description: "Bidirectional MCP bridge between Claude Code and Codex CLI",
+  },
+  subCommands: {
+    serve: () => import("./commands/serve.js").then((r) => r.default),
+    setup: () => import("./commands/setup.js").then((r) => r.default),
+    install: () => import("./commands/install.js").then((r) => r.default),
+  },
+});
 
-if (subcommand === "codex") {
-  await import("./codex-server.js");
-} else if (subcommand === "claude") {
-  await import("./claude-server.js");
-} else {
-  console.error(
-    `Usage: claude-codex-bridge <codex|claude>\n\n  codex   Start the Codex MCP server (for Claude Code)\n  claude  Start the Claude MCP server (for Codex CLI)`,
-  );
-  process.exit(1);
-}
+runMain(main);
