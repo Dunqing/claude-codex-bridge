@@ -206,8 +206,9 @@ export async function setupCodex(): Promise<void> {
       return;
     }
     // Remove existing section (everything from [mcp_servers.claude] to next section or EOF)
+    // Can't use [^[]* because TOML array values contain [ characters
     content = content
-      .replace(/\[mcp_servers\.claude\][^[]*/, "")
+      .replace(/\[mcp_servers\.claude\]\n(?:(?!\[[a-zA-Z]).*\n?)*/g, "")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
   }
